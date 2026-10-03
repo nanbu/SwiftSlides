@@ -1,0 +1,7 @@
+SwiftSlides includes ZIP and OPC parsing code adapted from SwiftDocuments.
+SwiftDocuments and SwiftSheets: Copyright (c) 2026 Shinichi Nambu, MIT License.
+No external Swift package dependencies are bundled.
+
+Synthetic fixture packages generated with python-pptx include MIT-licensed template parts.
+python-pptx: Copyright (c) 2013 Steve Canny, https://github.com/scanny.
+The full MIT notice is in Tests/SwiftSlidesTests/Fixtures/LICENSE-python-pptx.txt.

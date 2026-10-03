@@ -1,0 +1,128 @@
+[
+  {
+    "feature": "寸法・スライド順・非表示",
+    "read": "対応",
+    "write": "対応",
+    "boundary": "Size / Slide",
+    "test": "reorderAndAddSlides"
+  },
+  {
+    "feature": "テキスト・段落・リンク",
+    "read": "対応",
+    "write": "対応",
+    "boundary": "TextBody / Paragraph / TextRun / Link",
+    "test": "lineDirectionAndRichParagraphs"
+  },
+  {
+    "feature": "フォント・文字書式",
+    "read": "直接指定を読取",
+    "write": "対応",
+    "boundary": "Font / TextStyle",
+    "test": "independentProducerOracle"
+  },
+  {
+    "feature": "図形・線・矢印・破線",
+    "read": "プリセット/直接指定",
+    "write": "対応",
+    "boundary": "Element / ShapeGeometry / Fill / Stroke",
+    "test": "createRichPresentation"
+  },
+  {
+    "feature": "グループ・ローカル座標",
+    "read": "対応",
+    "write": "対応",
+    "boundary": "children / childFrame",
+    "test": "groupEditingAndElementReorder"
+  },
+  {
+    "feature": "配置・整列・均等配置",
+    "read": "座標を読取",
+    "write": "生成時の座標計算",
+    "boundary": "Rect / Insets / Layout",
+    "test": "gridAlignmentAndDistribution"
+  },
+  {
+    "feature": "画像・代替文",
+    "read": "必要時にbytesを展開",
+    "write": "対応",
+    "boundary": "Image / asset(at:)",
+    "test": "editedImageRetainsPackage"
+  },
+  {
+    "feature": "表",
+    "read": "結合情報も読取",
+    "write": "非結合表の生成/編集",
+    "boundary": "Table / TableCell",
+    "test": "geometryImagesGroupsTablesAndNotes"
+  },
+  {
+    "feature": "ノート・メタデータ",
+    "read": "対応",
+    "write": "対応",
+    "boundary": "notes / Metadata",
+    "test": "notesAndMetadataEditing"
+  },
+  {
+    "feature": "テーマ・script別フォント",
+    "read": "sourceThemesで定義読取",
+    "write": "新規Themeのみ",
+    "boundary": "ThemePart / Theme / Font",
+    "test": "themeFontsRead"
+  },
+  {
+    "feature": "master/layout継承・色変換",
+    "read": "参照と原本を保持",
+    "write": "保持",
+    "boundary": "実効外観は未計算",
+    "test": "frameEditPreservesRichTextAndChart"
+  },
+  {
+    "feature": "Chart/SmartArt/OLE/動画",
+    "read": "opaque/警告",
+    "write": "未変更部分を保持",
+    "boundary": "新規作成・動作解釈なし",
+    "test": "opaqueChartIsWarnedAndPreserved"
+  },
+  {
+    "feature": "アニメーション・遷移・拡張XML",
+    "read": "原本/警告",
+    "write": "未変更部分を保持",
+    "boundary": "タイミングのモデルなし",
+    "test": "editTextPreservesOtherPartsAndNamespaces"
+  },
+  {
+    "feature": "PPTM・マクロ",
+    "read": "保持/警告",
+    "write": "既存形式で保持",
+    "boundary": "実行・新規VBA作成なし",
+    "test": "macrosPreserved"
+  },
+  {
+    "feature": "Strict/ZIP64/変則パーツ名",
+    "read": "対応",
+    "write": "Strict編集・ZIP32保存",
+    "boundary": "Strictへのスライド追加は拒否",
+    "test": "readContainers"
+  },
+  {
+    "feature": "署名付きパッケージ",
+    "read": "未検証として警告",
+    "write": "未変更保存のみ",
+    "boundary": "編集は拒否",
+    "test": "signedPackageOnlyNoOpAllowed"
+  },
+  {
+    "feature": "旧PPT・暗号化",
+    "read": "拒否",
+    "write": "未対応",
+    "boundary": "OLEの種別詳細判定なし",
+    "test": "legacyAndUnknownRefused"
+  },
+  {
+    "feature": "ODP・Keynote",
+    "read": "ODPのmimetype検出のみ",
+    "write": "設計のみ",
+    "boundary": "コーデックなし",
+    "test": "odpDetectedButCodecUnavailable"
+  }
+]

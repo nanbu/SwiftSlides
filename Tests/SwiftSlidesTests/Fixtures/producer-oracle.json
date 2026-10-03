@@ -1,0 +1,22 @@
+{
+  "producer": "python-pptx",
+  "slides": 2,
+  "width": 959.9999212598425,
+  "height": 540.0,
+  "title": "Fictional strategy",
+  "headline": "売上成長 — 90 days",
+  "font": "Aptos",
+  "font_size": 28.0,
+  "table": [
+    [
+      "施策",
+      "担当",
+      "指標"
+    ],
+    [
+      "標準化",
+      "運用",
+      "作業時間"
+    ]
+  ]
+}
