@@ -60,3 +60,5 @@ PowerPoint実アプリとiOS実行は実際に検証するまで未検証と明�
 - 図形書式を変更してもspPrのスキーマ順を維持する。アニメーション・コネクタの参照先要素を削除する編集は拒否する。新規結合表は拒否する。
 
 既存ノートmasterを使ったノート追加は、原本のbody/sldImg/sldNumのplaceholder idxを参照する。bodyが一意でなければ保存を拒否する。
+
+新規・変更geometryはDrawingML ST_ShapeTypeの187プリセットに限る。未知の既存geometryは原本のまま保持できるが、新規生成には使わない。

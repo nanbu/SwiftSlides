@@ -42,6 +42,7 @@ func noOpIsByteIdentical(_ name: String) throws { let data = try fixture(name); 
 @Test func invalidModelsRefused() throws {
     var p = textPresentation(); p.size.width = .nan; #expect(throws:SlideError.self) { try p.data() }
     p = textPresentation(); p.slides[0].elements[0].frame?.width = -1; #expect(throws:SlideError.self) { try p.data() }
+    p = textPresentation(); p.slides[0].elements[0].geometry = "UnknownPreset"; #expect(throws:SlideError.self) { try p.data() }
     p = textPresentation(); p.slides[0].elements[0].fill = .solid(.rgb("bad")); #expect(throws:SlideError.self) { try p.data() }
     p = textPresentation(); p.slides[0].elements[0].text = .init("bad\u{01}"); #expect(throws:SlideError.self) { try p.data() }
 }

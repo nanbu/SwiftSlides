@@ -75,6 +75,7 @@ final class PPTXWriter {
         guard e.kind != .opaque, e.rawXML == nil else { throw SlideError.unsafeEdit("未解釈要素は別スライドへコピーできません") }
         guard e.frame != nil else { throw SlideError.invalidModel("新規要素にはframeが必要です") }
         if e.placeholder != nil { throw SlideError.unsafeEdit("新規プレースホルダーの作成は未対応です") }
+        if let g = e.geometry, !PPTXXML.validPresets.contains(g.preset) { throw SlideError.invalidModel("未知の図形プリセット: \(g.preset)") }
         let cnv = "<p:cNvPr id=\"\(id)\" name=\"\(escapeXML(e.name.isEmpty ? "Shape \(id)" : e.name))\"\(e.image.map { " descr=\"\(escapeXML($0.alternativeText))\"" } ?? "")/>"
         let text: String = try e.text.map { try PPTXXML.text($0,relationship:{ try self.linkID($0,rels:rels,strict:strict) }) } ?? ""
         let geometry = e.geometry.map { "<a:prstGeom prst=\"\(escapeXML($0.preset))\"><a:avLst/></a:prstGeom>" } ?? "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>"
@@ -312,6 +313,7 @@ final class PPTXWriter {
             else { target.replace("xfrm",with:try MarkupNode.fragment(PPTXXML.transform(e,p:e.kind == .table),strict:strict),first:true) }
         }
         if e.geometry != o.geometry {
+            if let g = e.geometry, !PPTXXML.validPresets.contains(g.preset) { throw SlideError.invalidModel("未知の図形プリセット: \(g.preset)") }
             guard e.kind == .shape || e.kind == .connector else { throw SlideError.unsafeEdit("この要素のgeometry変更は未対応です") }
             props?.remove(["prstGeom","custGeom"])
             if let g = e.geometry { props?.content.append(.node(try MarkupNode.fragment("<a:prstGeom prst=\"\(escapeXML(g.preset))\"><a:avLst/></a:prstGeom>",strict:strict))) }
