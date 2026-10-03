@@ -43,4 +43,4 @@ do {
         print("保存しました: \(first)")
     default: exit(2)
     }
-} catch { fputs("\(error)\n",stderr); exit(1) }
+} catch { FileHandle.standardError.write(Data("\(error)\n".utf8)); exit(1) }
