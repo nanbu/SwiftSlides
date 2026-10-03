@@ -137,7 +137,16 @@ final class PPTXWriter {
         let master = try ensureNotesMaster(), path = unique("ppt/notesSlides","xml"), rels = try relationships(path)
         try addRelationship(rels,type:"notesMaster",target:"/"+master); try addRelationship(rels,type:"slide",target:"/"+slidePath)
         let text = try PPTXXML.text(notes,relationship:{ try self.linkID($0,rels:rels,strict:false) })
-        let shape = notesPlaceholder(id:2,type:"sldImg",index:2) + notesPlaceholder(id:3,type:"body",index:3,text:text) + notesPlaceholder(id:4,type:"sldNum",index:5)
+        let masterNode = try parse(master)
+        let placeholders = masterNode.child("cSld")?.child("spTree")?.named("sp").compactMap { $0.child("nvSpPr")?.child("nvPr")?.child("ph") } ?? []
+        let bodies = placeholders.filter { $0.attr("type") == "body" }
+        guard bodies.count == 1 else { throw SlideError.unsafeEdit("ノートmasterの本文placeholderが一意ではありません") }
+        var shape = "", id = 2
+        for type in ["sldImg", "body", "sldNum"] {
+            if let ph = placeholders.first(where: { $0.attr("type") == type }) {
+                shape += notesPlaceholder(id:id,type:type,index:Int(ph.attr("idx") ?? "0") ?? 0,text:type == "body" ? text : ""); id += 1
+            }
+        }
         put(path,PPTXXML.envelope("notes","<p:cSld><p:spTree>\(PPTXXML.groupHeader())\(shape)</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>"),type:"application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml")
         saveRelationships(path,rels); return path
     }

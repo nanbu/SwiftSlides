@@ -58,3 +58,5 @@ PowerPoint実アプリとiOS実行は実際に検証するまで未検証と明�
 - 新規ノートはスライド画像・本文・スライド番号のプレースホルダーを持ち、ノートmasterを一つ共有する。optional notesMasterIdLstは新規生成しない。既存のリストは保持する。
 - DrawingMLのa:tにはxml:spaceを付けない。前後の空白は文字内容として保持する。Paragraph.endTextStyleでendParaRPrを読み書きする。
 - 図形書式を変更してもspPrのスキーマ順を維持する。アニメーション・コネクタの参照先要素を削除する編集は拒否する。新規結合表は拒否する。
+
+既存ノートmasterを使ったノート追加は、原本のbody/sldImg/sldNumのplaceholder idxを参照する。bodyが一意でなければ保存を拒否する。

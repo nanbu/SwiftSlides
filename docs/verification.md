@@ -4,7 +4,7 @@
 
 ## 自動検査
 
-- `swift test`:46テスト関数（パラメータ化を含め53ケース）。公開入口、部分リンク、独立したpython-pptxの期待値、Strict/ZIP64/PPTM、破損・危険編集・並行読み取り、保存保全を検査。
+- `swift test`:47テスト関数（パラメータ化を含め54ケース）。公開入口、部分リンク、独立したpython-pptxの期待値、Strict/ZIP64/PPTM、破損・危険編集・並行読み取り、保存保全を検査。
 - `swift build -c release`:最適化したライブラリとCLIをコンパイル。
 - `python3 scripts/check-contract.py`:対応表・作例・テスト名の整合と5負例。
 - `python3 scripts/check-public-content.py --history`:公開内容と全Git履歴の監査。11負例。

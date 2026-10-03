@@ -92,3 +92,18 @@ func noOpIsByteIdentical(_ name: String) throws { let data = try fixture(name); 
     p.slides[0].elements[0].frame?.x = 65
     #expect(try Presentation(data:p.data()).slides[0].elements[0].frame?.x == 65)
 }
+
+@Test func addedNotesUseExistingMasterPlaceholderIndex() throws {
+    let data = try changedFixture("libreoffice.pptx") { parts in
+        let path = "ppt/slides/_rels/slide2.xml.rels"
+        let root = try MarkupNode.parse(parts[path]!,part:path,limits:.init())
+        root.content.removeAll { if case .node(let n) = $0 { n.attr("Type")?.hasSuffix("/notesSlide") == true } else { false } }
+        parts[path] = Data(root.xml.utf8)
+    }
+    var p = try Presentation(data:data); p.slides[1].notes = .init("Added notes")
+    let output = try p.data(), q = try Presentation(data:output), archive = try PackageArchive(output)
+    #expect(q.slides[1].notes?.plainText == "Added notes")
+    let notePath = try #require(q.storage?.notesPaths[q.slides[1].id])
+    let root = try MarkupNode.parse(archive.read(notePath),part:notePath,limits:.init())
+    #expect(root.descendants("ph").first { $0.attr("type") == "body" }?.attr("idx") == "0")
+}
