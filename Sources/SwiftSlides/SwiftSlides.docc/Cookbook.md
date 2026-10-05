@@ -1,4 +1,4 @@
-﻿# 作例
+# 作例
 
 ## ビジネス資料の作例
 
@@ -71,6 +71,60 @@ print(result.warnings)
 
 未対応要素は原本で保持されます。文字段落や表を書き換える際の警告も検査してください。
 
+## async/awaitとTaskによる読み取り・保存
+
+```swift
+func updateTitle(input: URL, output: URL) async throws -> WriteResult {
+    var result = try await Presentation.read(contentsOf: input)
+    result.presentation.metadata.title = "更新版"
+    return try await result.presentation.write(to: output, options: .init(strict: true))
+}
+
+let operation = Task {
+    try await updateTitle(input: URL(filePath: "input.pptx"),
+                          output: URL(filePath: "output.pptx"))
+}
+let saved = try await operation.value
+print(saved.warnings)
+```
+
+UI側はoperationを保持し、不要になったら`operation.cancel()`を呼べます。キャンセルは協調的です。URL保存は分割書込境界とatomic確定直前に確認し、最後の確認後は成功し得ます。読み取り・エンコードの実処理は`@concurrent`でMainActorから移します。同期initializerと同期APIも利用できます。
+
+## 上限付き一括読取と対応能力
+
+```swift
+let urls = [URL(filePath: "first.pptx"), URL(filePath: "second.pptm")]
+let results = try await Presentation.readAll(contentsOf: urls,
+    options: .init(includeNotes: false), maxConcurrentReads: 2)
+for result in results {
+    print(result.presentation.plainText, result.preservationSummary.warningCounts)
+}
+let capabilities = try CodecSet.all.capabilities(for: .pptx)
+print(capabilities[.edit], capabilities[.render]) // partial / unsupported
+```
+
+結果順は入力順。同時数は正の整数で、ファイルごとのPackageLimitsを適用します。結果全体を保持するため巨大資料のstreaming用途には使いません。能力概要は個別文書の保存可否を保証しません。
+
+## 機能・プロファイル別の能力と診断
+
+```swift
+let capabilities = try CodecSet.all.capabilities(for: .pptx)
+let font = capabilities.capability(for: "TXT-003", operation: .read,
+    profile: .ooxmlTransitional)
+print(font.status, font.notes)
+for evidence in font.evidence {
+    print(evidence.fixture, evidence.fixtureSHA256, evidence.test, evidence.scope)
+}
+
+let result = try Presentation.read(contentsOf: URL(filePath: "input.pptx"))
+for diagnostic in result.diagnostics {
+    print(diagnostic.code.rawValue, diagnostic.stage, diagnostic.action,
+          diagnostic.feature?.rawValue as Any, diagnostic.location, diagnostic.count)
+}
+```
+
+機能IDは機能台帳と共通です。未掲載の機能・操作・プロファイルはunverifiedとし、別の証拠を転用しません。fixtureの証拠は回帰テストの定義で、実アプリ互換性を証明するものではありません。診断はwarningsと同じ件数を保持し、判明した位置だけを返します。保存結果にも`diagnostics`があります。
+
 ## 個別の形式だけリンクする
 
 ```swift
@@ -82,3 +136,126 @@ let codecs = CodecSet([.pptx])
 let result = try codecs.read(contentsOf: URL(filePath: "input.pptx"))
 let output = try codecs.write(result.presentation)
 ```
+
+
+## 原本の参照と保存計画
+
+```swift
+var deck = try Presentation(contentsOf: URL(filePath: "input.pptx"))
+let inventory = try deck.inspectPreservation()
+for reference in inventory.references {
+    print(reference.kind, reference.knowledge, reference.sourcePart, reference.location)
+}
+deck.slides[0].elements[0].frame?.x = 60
+let plan = try deck.planWrite(options: .init(strict: true))
+print(plan.actions, plan.diagnostics, plan.changedExpandedBytes)
+if plan.canSave {
+    let saved = try deck.save(to: URL(filePath: "output.pptx"), using: plan)
+    print(saved.warnings)
+}
+```
+
+inventoryは原本のXML/relationshipを検査します。保存計画は現在モデルを事前エンコードします。計画後にモデル・原本snapshot・optionsを変更するとstalePlanで拒否するので再計画してください。元URLの外部変更を監視する契約ではありません。canSaveは実アプリ互換性や全CRC確認の証明ではありません。
+
+## 明示的な複製と別資料からの取り込み
+
+```swift
+var deck = try Presentation(contentsOf: URL(filePath: "template.pptx"))
+let copiedID = try deck.duplicateSlide(id: deck.slides[0].id)
+print(copiedID)
+
+let source = try Presentation(contentsOf: URL(filePath: "source.pptx"))
+var imported = Presentation(size: source.size)
+try imported.importSlide(id: source.slides[0].id, from: source)
+let saved = try imported.write(to: URL(filePath: "imported.pptx"))
+print(saved.warnings)
+```
+
+元のslide値をそのままappendすると重複IDとして拒否されます。明示複製ではnotes/chartと埋込Workbookを独立partへ複製し、同原本の画像・layout/master/themeを共有します。取り込みは同寸法・同OOXMLプロファイルのPPTXに限定します。自己リンクは自動的に新しいslideへ向け、別slideリンクには`SlideImportOptions(slideLinks: [sourceID: destinationID])`を指定してください。未知参照・独自table style・異なるnotes masterの併存・マクロの別文書取り込みは拒否します。
+
+## ODP読取専用と書式索引
+
+```swift
+import SlideCore
+import SlideODP
+
+let codecs = CodecSet([.odp])
+let data = try Data(contentsOf: input)
+let result = try codecs.read(data)
+let index = try ODPCodec().styleIndex(data)
+let style = try index.resolve(name: "NamedStyle", family: "graphic")
+print(style.properties, style.origins, style.unresolved)
+```
+
+ODPのモデルはautomatic style自身の直接propertyを投影し、named parent/master継承は索引から別に照会します。未解決styleと未知要素は診断を確認してください。ODP保存・PPTXへの暗黙変換は拒否します。
+
+## 一枚ずつ読む
+
+```swift
+let reader = try await CodecSet.all.slideReader(contentsOf: input)
+let first = try await reader.slide(id: reader.slideDescriptors[0].id)
+print(first.slide.plainText)
+
+for try await item in try reader.slides(selection: .all) {
+    print(item.slide.id, item.slide.plainText, item.diagnostics)
+}
+```
+
+PPTXは要求した本文だけ解析します。ODPは開くときに単一XMLを走査しページと書式索引を保持します。未ロードのスライドを削除扱いにしないよう、readerの結果は部分Presentationにしません。
+
+## エンコード済Dataをatomic保存する
+
+```swift
+let encoded = try presentation.encoded()
+try FileTarget(output).write(encoded.data)
+```
+
+通常のURL保存とSavePlan保存もFileTargetを使用します。64KiBずつ一時fileへ書き、確定前の失敗・キャンセルでは保存先を保持します。エンコード済Dataのメモリは必要で、StreamingWriterは未提供です。
+
+
+## IDを指定した編集と取り消し
+
+```swift
+var deck = try Presentation(contentsOf: URL(filePath: "input.pptx"))
+let slideID = deck.slides[0].id
+let elementID = deck.slides[0].elements[0].id
+try deck.editSlide(id: slideID) { slide in
+    try slide.editElement(id: elementID) { element in
+        element.frame?.x = 60
+    }
+}
+```
+
+グループのchildrenもIDで検索します。対象不在・重複ID・対象のID変更・クロージャーの失敗では変更を反映しません。shapeに既存の文字がある場合は`element.editText { body in ... }`でTextBodyを編集できます。モデルの編集だけでは元形式の保存可否は保証しません。
+
+## 複数の編集を検査してから確定する
+
+```swift
+let checked = try deck.transaction { candidate in
+    candidate.metadata.title = "更新版"
+    try candidate.editSlide(id: slideID) { slide in
+        try slide.editElement(id: elementID) { $0.frame?.y = 45 }
+    }
+}
+print(checked.warnings)
+try FileTarget(URL(filePath: "output.pptx")).write(checked.data)
+```
+
+transactionは現在の元形式のwriterを使い、成功時だけdeckへ反映します。既定のstrict=trueは警告のある書き換えも拒否します。失敗時は文書と原本を維持し、ファイル保存はしません。警告を許容する場合は`options: .init(strict: false)`を明示し、返されたwarningsを確認します。事前エンコードが必要な同期APIです。
+
+## 形式指定・登録照会・非同期の計画エンコード
+
+```swift
+let codecs = CodecSet([.pptx, .pptm])
+print(codecs.formats, codecs.contains(.odp))
+let selected = try codecs.codec(for: .pptx)
+print(selected.format)
+let opened = try await codecs.read(bytes, format: .pptx)
+let summary = try await codecs.inspect(bytes, format: .pptx)
+let reader = try await codecs.slideReader(bytes, format: .pptx)
+let plan = try await codecs.planWrite(opened.presentation)
+let encoded = try await codecs.encoded(opened.presentation, using: plan)
+print(summary.slideCount, reader.slideDescriptors, encoded.warnings)
+```
+
+umbrellaのread/inspectにも同じ`format:`があります。同期コードではcodecsを省略した`SlideReader(data: bytes)` / `SlideReader(contentsOf: input)`も利用できます。readは内容判定、writeは明示形式→元形式→PPTXで選び、認識できる保存先拡張子との不一致を拒否します。

@@ -46,7 +46,7 @@ func noOpIsByteIdentical(_ name: String) throws { let data = try fixture(name); 
     p = textPresentation(); p.slides[0].elements[0].fill = .solid(.rgb("bad")); #expect(throws:SlideError.self) { try p.data() }
     p = textPresentation(); p.slides[0].elements[0].text = .init("bad\u{01}"); #expect(throws:SlideError.self) { try p.data() }
 }
-@Test func uncompressedCreationAndAtomicURLWrite() throws { let p = textPresentation(); let data = try p.data(options:.init(compress:false)); #expect(try Presentation(data:data).plainText == "Hello"); let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString+".pptx"); defer { try? FileManager.default.removeItem(at:url) }; try p.write(to:url); #expect(try Presentation(contentsOf:url).plainText == "Hello") }
+@Test func uncompressedCreationAndAtomicURLWrite() throws { let p = textPresentation(); let data = try p.data(options:.init(compress:false)); #expect(try Presentation(data:data).plainText == "Hello"); let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString+".pptx"); defer { try? FileManager.default.removeItem(at:url) }; let result = try p.write(to:url); #expect(result.warnings.isEmpty); #expect(try Presentation(contentsOf:url).plainText == "Hello") }
 
 @Test func generatedNotesAndWhitespaceContract() throws {
     var p = textPresentation()

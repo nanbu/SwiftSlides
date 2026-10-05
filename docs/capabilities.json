@@ -1,0 +1,730 @@
+{
+  "schemaVersion": 1,
+  "evidence": [
+    {
+      "id": "E01",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "independentProducerOracle",
+      "scope": "python-pptxが生成・再読した期待値と本文、直接フォント、段落、リンクを比較。実効外観は含まない。"
+    },
+    {
+      "id": "E02",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "strict.pptx",
+      "fixtureSHA256": "d2faa745a19ec87aa7e906599c6bf07357dd669fc3ca09245acec2156607d941",
+      "test": "readContainers",
+      "scope": "python-pptx由来fixtureの名前空間をStrictへ置換した資料。2枚の順序と本文を確認。Strict producerや全スキーマの検証ではない。"
+    },
+    {
+      "id": "E03",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "geometryImagesGroupsTablesAndNotes",
+      "scope": "図形座標、非結合表のセル本文、画像bytes、グループ、ノートを確認。"
+    },
+    {
+      "id": "E04",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "opaqueChartIsWarnedAndPreserved",
+      "scope": "棒チャートのgraphicFrameをopaqueとして読み、元XMLと警告を確認。チャートの意味モデルは作らない。"
+    },
+    {
+      "id": "E05",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "preserve",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "noOpIsByteIdentical",
+      "scope": "指定fixtureの未変更保存が入力全bytesと一致することを確認。編集保存の任意依存は検証しない。"
+    },
+    {
+      "id": "E06",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "preserve",
+      "fixture": "strict.pptx",
+      "fixtureSHA256": "d2faa745a19ec87aa7e906599c6bf07357dd669fc3ca09245acec2156607d941",
+      "test": "noOpIsByteIdentical",
+      "scope": "指定fixtureの未変更保存が入力全bytesと一致することを確認。編集保存の任意依存は検証しない。"
+    },
+    {
+      "id": "E07",
+      "format": "pptm",
+      "profile": "ooxmlTransitional",
+      "operation": "preserve",
+      "fixture": "macro.pptm",
+      "fixtureSHA256": "4ad887cd5337aa89f666766bc6bf69c834c2d0ebb153960b92a5c4d56c52846c",
+      "test": "noOpIsByteIdentical",
+      "scope": "指定fixtureの未変更保存が入力全bytesと一致することを確認。編集保存の任意依存は検証しない。"
+    },
+    {
+      "id": "E08",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "preserve",
+      "fixture": "unknown.pptx",
+      "fixtureSHA256": "742580bb39cc77a600330c3628ff08b067a1fdfec6d24e7551faf69567addbbe",
+      "test": "noOpIsByteIdentical",
+      "scope": "指定fixtureの未変更保存が入力全bytesと一致することを確認。編集保存の任意依存は検証しない。"
+    },
+    {
+      "id": "E09",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "unknown.pptx",
+      "fixtureSHA256": "742580bb39cc77a600330c3628ff08b067a1fdfec6d24e7551faf69567addbbe",
+      "test": "editTextPreservesOtherPartsAndNamespaces",
+      "scope": "本文1箇所を書き換え、無関係の圧縮済パーツ、未知拡張XML、namespaceを保持。書換え警告とstrict拒否を確認。"
+    },
+    {
+      "id": "E10",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "edit",
+      "fixture": "strict.pptx",
+      "fixtureSHA256": "d2faa745a19ec87aa7e906599c6bf07357dd669fc3ca09245acec2156607d941",
+      "test": "strictNamespaceEdit",
+      "scope": "既存要素のy座標変更と本文保持を再読で確認。Strictでの新規スライド追加は含まない。"
+    },
+    {
+      "id": "E11",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "frameEditPreservesRichTextAndChart",
+      "scope": "既知テキスト図形のx座標だけを変更し、rich textと別スライドのチャートXMLを保持。"
+    },
+    {
+      "id": "E12",
+      "format": "pptm",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "macro.pptm",
+      "fixtureSHA256": "4ad887cd5337aa89f666766bc6bf69c834c2d0ebb153960b92a5c4d56c52846c",
+      "test": "macrosPreserved",
+      "scope": "metadata編集後に架空の非実行VBA bytesが一致することと、PPTXへの暗黙変換拒否を確認。実マクロ動作は未検証。"
+    },
+    {
+      "id": "E13",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "editedImageRetainsPackage",
+      "scope": "既存画像を架空PNG bytesと代替文へ差し替え、保存後の代替文を再読で確認。"
+    },
+    {
+      "id": "E14",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "preserve",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "signedPackageOnlyNoOpAllowed",
+      "scope": "fixtureに架空署名パーツを追加し、未変更全bytes一致を確認。暗号署名のvalidityは未検証。"
+    },
+    {
+      "id": "E15",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "signedPackageOnlyNoOpAllowed",
+      "scope": "fixtureに架空署名パーツを追加し、metadata編集保存の拒否を確認。"
+    },
+    {
+      "id": "E16",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "opaqueMutationAndThemeMutationRefused",
+      "scope": "チャートopaque要素の位置変更と既存テーマの変更をそれぞれ拒否することを確認。"
+    },
+    {
+      "id": "E17",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "create",
+      "fixture": "fixture.png",
+      "fixtureSHA256": "b2570ba9eea72bc56a277aca4f7dce333a815bcf68c1407683576579a93e88f9",
+      "test": "createRichPresentation",
+      "scope": "新規文字・図形・画像・非結合表・ノートを生成してSwiftSlidesで再読。画像入力は架空の1pixel PNG。実アプリ検証の証拠ではない。"
+    },
+    {
+      "id": "E18",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "inspect",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "inventoryListsLocatedReferencesAndIdentities",
+      "scope": "fixtureにtimingと架空の未知参照を追加し、位置・原本identity・既知/未知を確認。全形式の依存解釈ではない。"
+    },
+    {
+      "id": "E19",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "savePlanCopiesOriginalAndLocatesPatch",
+      "scope": "未変更計画のbyte一致とcopy actions、既存要素の位置変更のpatch計画・再読を検査。出力Dataを計画時に生成する。"
+    },
+    {
+      "id": "E20",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "duplicatePreservesNotesChartAssetsAndLocalReferences",
+      "scope": "notes/chart/embedded Workbookを独立partへ複製し、画像共有、原本圧縮payload保持、独立notes編集を確認。チャートの新規生成・再計算ではない。"
+    },
+    {
+      "id": "E21",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "python-pptx.pptx",
+      "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
+      "test": "importRebasesMasterAssetsAndRequiresSlideLinkMapping",
+      "scope": "fixtureのrun linkを別slideへ変更し、新規文書へimport。明示対応表、layout/master/assetsの移植、notes、保存計画とstale拒否を確認。"
+    },
+    {
+      "id": "E22",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "edit",
+      "fixture": "strict.pptx",
+      "fixtureSHA256": "d2faa745a19ec87aa7e906599c6bf07357dd669fc3ca09245acec2156607d941",
+      "test": "cloneRefusesUnknownConflictingMastersAndProfiles",
+      "scope": "名前空間をStrictへ変更したfixture内の1枚複製を再読。Strict producerやStrict新規生成の証拠ではない。"
+    },
+    {
+      "id": "E23",
+      "format": "pptm",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "macro.pptm",
+      "fixtureSHA256": "4ad887cd5337aa89f666766bc6bf69c834c2d0ebb153960b92a5c4d56c52846c",
+      "test": "macroDuplicatePreservesVBAAndCloneCancellationIsAtomic",
+      "scope": "架空VBAを持つPPTMの同文書内複製と元VBA圧縮payload保持。マクロの実行・別資料取り込みは行わない。"
+    },
+    {
+      "id": "E24",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "styles.odp",
+      "fixtureSHA256": "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0",
+      "test": "odpBasicReadPreservesOriginalAndSeparatesInheritedValues",
+      "scope": "ODF 1.3架空fixtureのページ寸法、本文・空白・tab・リンク、automatic直接書式、画像bytes、表表示文字、notesを照合。外観・保存は対象外。"
+    },
+    {
+      "id": "E25",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "styles.odp",
+      "fixtureSHA256": "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0",
+      "test": "odpStylesResolveDirectNamedAutomaticAndMaster",
+      "scope": "familyとautomatic scopeを分離しdefault/named parent/master/direct propertyの値と出典を照合。placeholder外観は対象外。"
+    },
+    {
+      "id": "E26",
+      "format": "odp",
+      "profile": "odf14",
+      "operation": "read",
+      "fixture": "libreoffice.odp",
+      "fixtureSHA256": "1e84faf264b006b6e9a817858c33a35c8d347815b69c699e95c9cfc9b1cf7857",
+      "test": "libreOfficeODPProducerIsReadableWithLocatedWarnings",
+      "scope": "LibreOffice 26.2.3.2が架空PPTXから生成した2枚のODF 1.4で本文とnotesを照合。custom geometryはopaqueの表示文字投影。外観は未検証。"
+    }
+  ],
+  "capabilities": [
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E01"
+      ],
+      "notes": "Unicode本文の直接値。高度な文字制御は未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E01"
+      ],
+      "notes": "直接font family/sizeと一部書式。継承フォント・言語全体は未解決。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-008",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E01"
+      ],
+      "notes": "直接指定の段落alignment。全indent/margin条件は未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PKG-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E01"
+      ],
+      "notes": "Transitional fixtureの読取。全schema互換性の保証ではない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PKG-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E02"
+      ],
+      "notes": "名前空間変種の基本本文読取。未検証のStrict機能は含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IMG-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E03"
+      ],
+      "notes": "埋込PNGの参照と必要時bytes展開。全画像形式の描画は未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TBL-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E03"
+      ],
+      "notes": "非結合表のセル読取。高度なtable styleは未解決。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-011",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E04"
+      ],
+      "notes": "チャートをopaque要素として位置・元XML・警告付きで読取。意味は未解釈。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-001",
+      "operation": "read",
+      "status": "preserveOnly",
+      "evidence": [
+        "E04"
+      ],
+      "notes": "棒チャートfixtureの元XMLを保持。series/axes等の意味は読まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IO-008",
+      "operation": "preserve",
+      "status": "supported",
+      "evidence": [
+        "E05"
+      ],
+      "notes": "未変更保存に限って全bytes一致。編集保存の可否は別に検査する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "IO-008",
+      "operation": "preserve",
+      "status": "supported",
+      "evidence": [
+        "E06"
+      ],
+      "notes": "未変更保存に限って全bytes一致。編集保存の可否は別に検査する。"
+    },
+    {
+      "format": "pptm",
+      "profile": "ooxmlTransitional",
+      "feature": "IO-008",
+      "operation": "preserve",
+      "status": "supported",
+      "evidence": [
+        "E07"
+      ],
+      "notes": "未変更保存に限って全bytes一致。編集保存の可否は別に検査する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-001",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "E05"
+      ],
+      "notes": "棒チャートを含むfixtureの未変更全bytes保持。編集・変換・再生は含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-009",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "E08"
+      ],
+      "notes": "架空拡張XMLとopaque binaryを含む未変更資料の全bytes保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-002",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E09"
+      ],
+      "notes": "文字段落を再構成する本文差替え。未対応書式の書換え警告を返しstrict保存は拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-009",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E09"
+      ],
+      "notes": "本文の局所編集時に無関係の拡張を保全。未知参照の任意編集を許可しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PKG-004",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E10"
+      ],
+      "notes": "既存要素の位置変更のみを確認。Strict新規生成・スライド追加は提供しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-001",
+      "operation": "edit",
+      "status": "preserveOnly",
+      "evidence": [
+        "E11"
+      ],
+      "notes": "別スライドの既知要素を位置変更してもチャートXMLを保持。チャートそのものの編集ではない。"
+    },
+    {
+      "format": "pptm",
+      "profile": "ooxmlTransitional",
+      "feature": "SEC-005",
+      "operation": "edit",
+      "status": "preserveOnly",
+      "evidence": [
+        "E12"
+      ],
+      "notes": "metadata変更時に元VBA bytesを保持。実マクロの解釈・実行・新規生成・除去は提供しない。"
+    },
+    {
+      "format": "pptm",
+      "profile": "ooxmlTransitional",
+      "feature": "SEC-005",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "E07"
+      ],
+      "notes": "架空VBAパーツを未変更で全bytes保持。実マクロの動作を証明しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IMG-001",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E13"
+      ],
+      "notes": "既存PNG画像の差替えと代替文を確認。crop/effectの変更は含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "SEC-006",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "E14"
+      ],
+      "notes": "署名パーツを含む未変更資料のbytes保持のみ。署名の暗号検証は提供しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "SEC-006",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E15"
+      ],
+      "notes": "署名パーツがある資料の編集保存を拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-011",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E16"
+      ],
+      "notes": "元opaque要素の変更保存は拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-001",
+      "operation": "create",
+      "status": "partial",
+      "evidence": [
+        "E17"
+      ],
+      "notes": "新規PPTXの基本直接値を生成。対応する限定モデルの自己再読を検証し、高度機能は含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IMG-001",
+      "operation": "create",
+      "status": "partial",
+      "evidence": [
+        "E17"
+      ],
+      "notes": "新規PPTXの基本直接値を生成。対応する限定モデルの自己再読を検証し、高度機能は含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TBL-001",
+      "operation": "create",
+      "status": "partial",
+      "evidence": [
+        "E17"
+      ],
+      "notes": "新規PPTXの基本直接値を生成。対応する限定モデルの自己再読を検証し、高度機能は含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "MTA-008",
+      "operation": "inspect",
+      "status": "partial",
+      "evidence": [
+        "E18"
+      ],
+      "notes": "原本XML/relationshipの参照と未知scopeを列挙。非XML内部・モデル変更後のgraphは未解釈。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IO-009",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E19"
+      ],
+      "notes": "現行writerを使う事前エンコード計画。source/model/options変更を拒否。遅延file監視・全理由の収集は未実装。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "DOC-004",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E20",
+        "E21"
+      ],
+      "notes": "同寸法・同profileで原本を複製・取り込み。未知参照、競合notes master、独自table styleの別資料取り込みは拒否。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "DOC-004",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E22"
+      ],
+      "notes": "同じStrict原本内の複製のみ確認。異profileの取り込みとStrict新規生成は未対応。"
+    },
+    {
+      "format": "pptm",
+      "profile": "ooxmlTransitional",
+      "feature": "DOC-004",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E23"
+      ],
+      "notes": "同文書内の複製とVBA原本保持。別資料へのマクロ移植は拒否。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "DOC-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E24"
+      ],
+      "notes": "指定ODF 1.3 fixtureで基本値を投影。named/master継承を直接値へ埋めない。書込と外観は未提供。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "DOC-009",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E24"
+      ],
+      "notes": "指定ODF 1.3 fixtureで基本値を投影。named/master継承を直接値へ埋めない。書込と外観は未提供。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "TXT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E24"
+      ],
+      "notes": "指定ODF 1.3 fixtureで基本値を投影。named/master継承を直接値へ埋めない。書込と外観は未提供。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "TXT-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E24"
+      ],
+      "notes": "指定ODF 1.3 fixtureで基本値を投影。named/master継承を直接値へ埋めない。書込と外観は未提供。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "IMG-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E24"
+      ],
+      "notes": "指定ODF 1.3 fixtureで基本値を投影。named/master継承を直接値へ埋めない。書込と外観は未提供。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "STY-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E25"
+      ],
+      "notes": "default/named/automatic/drawing-page masterのpropertyと出典の限定解決。placeholder・外観・編集は対象外。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "STY-008",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E25"
+      ],
+      "notes": "default/named/automatic/drawing-page masterのpropertyと出典の限定解決。placeholder・外観・編集は対象外。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "STY-010",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E25"
+      ],
+      "notes": "default/named/automatic/drawing-page masterのpropertyと出典の限定解決。placeholder・外観・編集は対象外。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf14",
+      "feature": "TXT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E26"
+      ],
+      "notes": "LibreOffice生成の指定fixtureで本文・notesを確認。ODF 1.4全要素への対応を意味しない。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf14",
+      "feature": "DOC-009",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E26"
+      ],
+      "notes": "LibreOffice生成の指定fixtureで本文・notesを確認。ODF 1.4全要素への対応を意味しない。"
+    }
+  ]
+}

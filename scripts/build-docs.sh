@@ -23,14 +23,25 @@ mkdir -p "$graph_path"
 # satisfying the reference checks after a toolchain change.
 find "$graph_path" -name '*.symbols.json' -delete
 sdk_path="$(xcrun --sdk macosx --show-sdk-path)"
-for module in SlideCore SlidePPTX SwiftSlides; do
-    xcrun swift-symbolgraph-extract \
+# Ask the selected Swift compiler for its toolchain. Its companion tools are
+# not always exposed in PATH; bare xcrun can select a different compiler version.
+toolchain_bin="$(swift -print-target-info | python3 -c 'import json, pathlib, sys; print(pathlib.Path(json.load(sys.stdin)["paths"]["runtimeResourcePath"]).parent.parent / "bin")')"
+graph_extractor="$toolchain_bin/swift-symbolgraph-extract"
+docc_tool="$toolchain_bin/docc"
+for tool in "$graph_extractor" "$docc_tool"; do
+    if [[ ! -x "$tool" ]]; then
+        echo 'The selected Swift toolchain does not include the required documentation tools' >&2
+        exit 1
+    fi
+done
+for module in SlideCore SlidePPTX SlideODP SwiftSlides; do
+    "$graph_extractor" \
         -module-name "$module" \
         -target "$(uname -m)-apple-macosx14.0" \
         -sdk "$sdk_path" \
         -I "$module_path" \
         -Xcc "-fmodule-map-file=$PWD/Sources/CZlib/module.modulemap" \
-        -experimental-allowed-reexported-modules=SlideCore,SlidePPTX \
+        -experimental-allowed-reexported-modules=SlideCore,SlidePPTX,SlideODP \
         -minimum-access-level public \
         -omit-extension-block-symbols \
         -output-dir "$graph_path"
@@ -53,7 +64,7 @@ for path in Path(sys.argv[1]).glob('*.symbols.json'):
 for symbol in graph['symbols']:
     if not symbol.get('docComment') and symbol['identifier']['precise'] in origin_comments:
         symbol['docComment'] = origin_comments[symbol['identifier']['precise']]
-# The umbrella graph includes re-exported Core / DOCX declarations and its own
+# The umbrella graph includes re-exported Core / PPTX / ODP declarations and its own
 # convenience extensions. Omit machine paths before producing a public artifact.
 for symbol in graph['symbols']:
     symbol.pop('location', None)
@@ -62,7 +73,7 @@ for symbol in graph['symbols']:
     symbol.get('docComment', {}).pop('uri', None)
 Path('.build/docc-public-graphs/SwiftSlides.symbols.json').write_text(json.dumps(graph))
 PY
-xcrun docc convert Sources/SwiftSlides/SwiftSlides.docc \
+"$docc_tool" convert Sources/SwiftSlides/SwiftSlides.docc \
     --additional-symbol-graph-dir .build/docc-public-graphs \
     --output-path "$output" \
     --fallback-bundle-identifier dev.nambu.SwiftSlides \

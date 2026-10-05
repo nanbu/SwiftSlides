@@ -63,6 +63,7 @@ package final class MarkupNode {
         return "<\(qualifiedName)\(declarations)\(attrs)>\(body)</\(qualifiedName)>"
     }
     package static func parse(_ data: Data, part: String, limits: PackageLimits) throws -> MarkupNode {
+        try Task.checkCancellation()
         guard limits.maxXMLDepth > 0, limits.maxXMLNodes > 0 else { throw SlideError.limitExceeded("XML limits") }
         // XML accepts UTF-8/16/32. Reject declarations before handing bytes to the platform parser.
         for encoding in [String.Encoding.utf8, .utf16LittleEndian, .utf16BigEndian, .utf32LittleEndian, .utf32BigEndian] {
@@ -71,6 +72,7 @@ package final class MarkupNode {
         let d = XMLDelegate(part: part, limits: limits), parser = XMLParser(data: data)
         parser.shouldProcessNamespaces = true; parser.shouldReportNamespacePrefixes = true; parser.shouldResolveExternalEntities = false; parser.delegate = d
         let ok = parser.parse()
+        try Task.checkCancellation()
         if let error = d.failure { throw error }
         guard ok, parser.parserError == nil, d.completed, d.stack.isEmpty, let root = d.root else { throw SlideError.invalidXML(part: part, detail: parser.parserError?.localizedDescription ?? "不完全なXML") }; return root
     }
@@ -85,11 +87,17 @@ private final class XMLDelegate: NSObject, XMLParserDelegate {
     var nodes = 0
     var completed = false
     init(part: String, limits: PackageLimits) { self.part = part; self.limits = limits }
+    private func keepParsing(_ parser: XMLParser) -> Bool {
+        if Task.isCancelled { failure = CancellationError() }
+        guard failure == nil else { parser.abortParsing(); return false }
+        return true
+    }
     func parserDidEndDocument(_ parser: XMLParser) { completed = true }
     func parser(_ parser: XMLParser, parseErrorOccurred error: any Error) { if failure == nil { failure = SlideError.invalidXML(part: part, detail: error.localizedDescription) } }
     func parser(_ parser: XMLParser, didStartMappingPrefix prefix: String, toURI uri: String) { prefixes[prefix, default: []].append(uri) }
     func parser(_ parser: XMLParser, didEndMappingPrefix prefix: String) { _ = prefixes[prefix]?.popLast() }
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName qName: String?, attributes dict: [String: String]) {
+        guard keepParsing(parser) else { return }
         nodes += 1
         guard nodes <= limits.maxXMLNodes, stack.count < limits.maxXMLDepth else { failure = SlideError.limitExceeded("XML深さ/要素数: \(part)"); parser.abortParsing(); return }
         var attrs: [String: String] = [:], names: [String: String] = [:]
@@ -103,9 +111,10 @@ private final class XMLDelegate: NSObject, XMLParserDelegate {
         if let parent = stack.last { parent.content.append(.node(node)) } else { guard root == nil else { failure = SlideError.invalidXML(part: part, detail: "複数ルート"); parser.abortParsing(); return }; root = node }
         stack.append(node)
     }
-    func parser(_ parser: XMLParser, foundCharacters s: String) { stack.last?.content.append(.text(s)) }
+    func parser(_ parser: XMLParser, foundCharacters s: String) { guard keepParsing(parser) else { return }; stack.last?.content.append(.text(s)) }
     func parser(_ parser: XMLParser, foundCDATA data: Data) { self.parser(parser, foundCharacters: String(decoding: data, as: UTF8.self)) }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName qName: String?) {
+        guard keepParsing(parser) else { return }
         guard failure == nil, let node = stack.popLast(), node.name == name, node.namespace == (namespaceURI ?? "") else { if failure == nil { failure = SlideError.invalidXML(part: part, detail: "不正なXML境界") }; parser.abortParsing(); return }
     }
     func parser(_ parser: XMLParser, foundProcessingInstructionWithTarget target: String, data: String?) { failure = SlideError.invalidXML(part: part, detail: "processing instructionは未対応です"); parser.abortParsing() }

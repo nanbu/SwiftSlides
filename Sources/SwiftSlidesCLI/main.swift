@@ -39,7 +39,8 @@ do {
         let rows = [header,["顧客集中","営業","継続率"].map { TableCell($0,style:bodyStyle,fill:.solid(.theme("lt2"))) },["業務標準化","運用","作業時間"].map { TableCell($0,style:bodyStyle) }]
         roadmap.addTable(.init(columnWidths:[250,180,410],rowHeights:[44,52,52],rows:rows),frame:.init(x:60,y:296,width:840,height:148))
         presentation.slides.append(roadmap)
-        try presentation.write(to:URL(filePath:first))
+        let result = try presentation.write(to:URL(filePath:first))
+        for warning in result.warnings { print("警告: \(warning.message)") }
         print("保存しました: \(first)")
     default: exit(2)
     }

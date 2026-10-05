@@ -1,0 +1,2243 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-03",
+  "baselineRevision": "193495f",
+  "swiftSheetsRevision": "d153773",
+  "phases": [
+    "P0",
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P8"
+  ],
+  "sources": [
+    {
+      "id": "S01",
+      "title": "ECMA-376",
+      "url": "https://ecma-international.org/publications-and-standards/standards/ecma-376/",
+      "kind": "規範仕様入口"
+    },
+    {
+      "id": "S02",
+      "title": "PresentationML構造",
+      "url": "https://learn.microsoft.com/en-us/office/open-xml/presentation/structure-of-a-presentationml-document",
+      "kind": "提供者資料"
+    },
+    {
+      "id": "S03",
+      "title": "MS-PPTX",
+      "url": "https://learn.microsoft.com/en-us/openspecs/office_standards/ms-pptx/efd8bb2d-d888-4e2e-af25-cad476730c9f",
+      "kind": "規範拡張仕様"
+    },
+    {
+      "id": "S04",
+      "title": "PowerPoint形式一覧",
+      "url": "https://learn.microsoft.com/en-us/office/compatibility/office-file-format-reference",
+      "kind": "提供者資料"
+    },
+    {
+      "id": "S05",
+      "title": "MS-PPT",
+      "url": "https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-ppt/6be79dde-33c1-4c1b-8ccc-4b2301c08662",
+      "kind": "規範バイナリ仕様"
+    },
+    {
+      "id": "S06",
+      "title": "MS-OFFCRYPTO",
+      "url": "https://learn.microsoft.com/en-us/openspecs/office_file_formats/ms-offcrypto/11dfbc00-031a-44bc-a836-e7b9872438fd",
+      "kind": "規範暗号仕様"
+    },
+    {
+      "id": "S07",
+      "title": "ODF 1.4 Packages",
+      "url": "https://docs.oasis-open.org/office/OpenDocument/v1.4/os/part2-packages/OpenDocument-v1.4-os-part2-packages.html",
+      "kind": "規範仕様"
+    },
+    {
+      "id": "S08",
+      "title": "ODF 1.4 Schema",
+      "url": "https://docs.oasis-open.org/office/OpenDocument/v1.4/OpenDocument-v1.4-part3-schema.pdf",
+      "kind": "規範仕様"
+    },
+    {
+      "id": "S09",
+      "title": "Impressフィルター",
+      "url": "https://help.libreoffice.org/latest/en-US/text/shared/guide/convertfilters.html",
+      "kind": "提供者資料"
+    },
+    {
+      "id": "S10",
+      "title": "LibreOffice描画プロパティ",
+      "url": "https://raw.githubusercontent.com/LibreOffice/core/master/xmloff/source/draw/sdpropls.cxx",
+      "kind": "提供者実装・可変ブランチ"
+    },
+    {
+      "id": "S11",
+      "title": "Keynoteガイド",
+      "url": "https://support.apple.com/guide/keynote/welcome/mac",
+      "kind": "提供者機能資料"
+    },
+    {
+      "id": "S12",
+      "title": "iWorkパッケージと単一ファイル",
+      "url": "https://support.apple.com/en-il/119883",
+      "kind": "提供者機能資料"
+    },
+    {
+      "id": "S13",
+      "title": "iWork書き出し",
+      "url": "https://support.apple.com/en-gb/105050",
+      "kind": "提供者機能資料"
+    },
+    {
+      "id": "S14",
+      "title": "iWorkFileFormat",
+      "url": "https://raw.githubusercontent.com/obriensp/iWorkFileFormat/master/Docs/index.md",
+      "kind": "解析者の一次観察・旧世代"
+    },
+    {
+      "id": "S15",
+      "title": "keynote-parser",
+      "url": "https://github.com/psobot/keynote-parser",
+      "kind": "解析実装・可変ブランチ"
+    },
+    {
+      "id": "S16",
+      "title": "Keynote表の数式",
+      "url": "https://support.apple.com/en-euro/guide/keynote/tanfb0588a84/mac",
+      "kind": "提供者機能資料"
+    },
+    {
+      "id": "S17",
+      "title": "Keynoteチャート",
+      "url": "https://support.apple.com/en-euro/guide/keynote/tan1a8924264/mac",
+      "kind": "提供者機能資料"
+    },
+    {
+      "id": "S18",
+      "title": "Keynote遷移",
+      "url": "https://support.apple.com/en-euro/guide/keynote/tanff5ae749e/mac",
+      "kind": "提供者機能資料"
+    },
+    {
+      "id": "S19",
+      "title": "Keynote数式",
+      "url": "https://support.apple.com/en-au/guide/keynote/tan72a69d01f/mac",
+      "kind": "提供者機能資料"
+    },
+    {
+      "id": "S20",
+      "title": "Keynote録画",
+      "url": "https://support.apple.com/guide/keynote/record-presentations-tan81813d552/mac",
+      "kind": "提供者機能資料"
+    }
+  ],
+  "categories": [
+    {
+      "id": "PKG",
+      "name": "コンテナと形式",
+      "scope": "拡張子だけで判定せず、プロファイルと原本構造を維持する。",
+      "native": {
+        "PPTX/PPTM": "ZIP/OPC、content types、relationships、Strict/Transitional、CFB旧形式",
+        "ODP": "ZIP/manifest/mimetype、Flat XML、ODF版とExtended",
+        "Keynote": "単一ファイル/パッケージ、Index/Index.zip、IWA、旧XML（世代別実測）"
+      },
+      "sources": [
+        "S01",
+        "S04",
+        "S05",
+        "S07",
+        "S09",
+        "S12",
+        "S14",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "PKG-001",
+          "name": "内容に基づく形式判定",
+          "phase": "P1",
+          "model": "FormatProfile",
+          "baseline": "partial",
+          "acceptance": "ODP・Keynote・暗号Office・旧PPTを根拠つきで区別"
+        },
+        {
+          "id": "PKG-002",
+          "name": "ZIP stored/DEFLATE/ZIP64/descriptor",
+          "phase": "P1",
+          "model": "PackageArchive",
+          "baseline": "partial",
+          "acceptance": "読める範囲と出力上限、CRC、サイズ差を検査"
+        },
+        {
+          "id": "PKG-003",
+          "name": "OPC content typesとrelationship",
+          "phase": "P1",
+          "model": "PackageGraph",
+          "baseline": "basic",
+          "acceptance": "パーツ移動・相対URI・外部target・欠損に対応"
+        },
+        {
+          "id": "PKG-004",
+          "name": "StrictとTransitionalのプロファイル",
+          "phase": "P3",
+          "model": "FormatDialect",
+          "baseline": "partial",
+          "acceptance": "Strictへの追加・新規出力もスキーマ検証"
+        },
+        {
+          "id": "PKG-005",
+          "name": "テンプレートとスライドショー形式",
+          "phase": "P3",
+          "model": "DocumentKind",
+          "baseline": "none",
+          "acceptance": "POTX/POTM/PPSX/PPSMのkindとcontent typeを保持"
+        },
+        {
+          "id": "PKG-006",
+          "name": "ODF manifestとmimetype配置",
+          "phase": "P2",
+          "model": "ODPPackage",
+          "baseline": "notApplicable",
+          "acceptance": "MIME・manifest・格納順・非圧縮条件を検査"
+        },
+        {
+          "id": "PKG-007",
+          "name": "ODF世代とExtendedの識別",
+          "phase": "P2",
+          "model": "FormatDialect",
+          "baseline": "notApplicable",
+          "acceptance": "1.0–1.4と拡張語彙を区別し対応を報告"
+        },
+        {
+          "id": "PKG-008",
+          "name": "Flat XML presentation",
+          "phase": "P3",
+          "model": "ODPFlatXML",
+          "baseline": "notApplicable",
+          "acceptance": "外部・埋込binary dataと単位を再読で照合"
+        },
+        {
+          "id": "PKG-009",
+          "name": "Keynote ZIP/ディレクトリ/入れ子",
+          "phase": "P6",
+          "model": "KeynoteContainer",
+          "baseline": "notApplicable",
+          "acceptance": "実測した世代の外側・Index形態を独立試験"
+        },
+        {
+          "id": "PKG-010",
+          "name": "IWA framingとSnappy",
+          "phase": "P6",
+          "model": "IWAStore",
+          "baseline": "notApplicable",
+          "acceptance": "chunk長・展開量・切断・不正圧縮を検査"
+        },
+        {
+          "id": "PKG-011",
+          "name": "Protobuf未知fieldとtype registry",
+          "phase": "P6",
+          "model": "KeynoteRegistry",
+          "baseline": "notApplicable",
+          "acceptance": "世代ごとの型ID、wire値、未知fieldを保持"
+        },
+        {
+          "id": "PKG-012",
+          "name": "旧Keynote XML/テーマ形式",
+          "phase": "P7",
+          "model": "KeynoteLegacy",
+          "baseline": "notApplicable",
+          "acceptance": "対象世代の実例で読取・書戻し可否を確定"
+        },
+        {
+          "id": "PKG-013",
+          "name": "旧PPT/POT/PPSのCFBとrecords",
+          "phase": "P7",
+          "model": "LegacyPPTCodec",
+          "baseline": "refused",
+          "acceptance": "persist directoryとOfficeArt参照を正しく追跡"
+        },
+        {
+          "id": "PKG-014",
+          "name": "旧Impress SXI/STI系",
+          "phase": "P7",
+          "model": "LegacyImpressCodec",
+          "baseline": "notApplicable",
+          "acceptance": "ODFとの違いと対象版を確定し未知構造を保持"
+        }
+      ]
+    },
+    {
+      "id": "DOC",
+      "name": "文書とスライド構造",
+      "scope": "文書全体の順序、参照、複製と編集を扱う。",
+      "native": {
+        "PPTX/PPTM": "presentation、sldIdLst、slide、section/custom showの拡張",
+        "ODP": "office:presentation、draw:page、presentation:show/settings",
+        "Keynote": "文書・slide collection・slide参照の型候補（registry確認）"
+      },
+      "sources": [
+        "S01",
+        "S02",
+        "S03",
+        "S08",
+        "S11",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "DOC-001",
+          "name": "スライド寸法・比率・向き",
+          "phase": "P1",
+          "model": "Size/Canvas",
+          "baseline": "basic",
+          "acceptance": "原単位と丸め、未知サイズ値を保持"
+        },
+        {
+          "id": "DOC-002",
+          "name": "スライド順序・名前・表示状態",
+          "phase": "P1",
+          "model": "Slides/SlideID",
+          "baseline": "basic",
+          "acceptance": "同名・非表示・並替後の参照を維持"
+        },
+        {
+          "id": "DOC-003",
+          "name": "追加・削除・並べ替え",
+          "phase": "P1",
+          "model": "SlideEditing",
+          "baseline": "partial",
+          "acceptance": "既知参照を更新、未知参照への危険編集を拒否"
+        },
+        {
+          "id": "DOC-004",
+          "name": "スライド複製・別資料からの取込",
+          "phase": "P1",
+          "model": "ImportPlan",
+          "baseline": "refused",
+          "acceptance": "ID・layout・notes・asset・内部リンクを再接続"
+        },
+        {
+          "id": "DOC-005",
+          "name": "セクション・グループ構造",
+          "phase": "P3",
+          "model": "Section",
+          "baseline": "preserved",
+          "acceptance": "所属・順序・空グループとUI意味を保持"
+        },
+        {
+          "id": "DOC-006",
+          "name": "カスタムスライドショー",
+          "phase": "P5",
+          "model": "CustomShow",
+          "baseline": "preserved",
+          "acceptance": "重複登場・欠損参照・範囲を検査"
+        },
+        {
+          "id": "DOC-007",
+          "name": "背景の直接指定と継承",
+          "phase": "P3",
+          "model": "Background",
+          "baseline": "partial",
+          "acceptance": "master背景と明示noneを区別"
+        },
+        {
+          "id": "DOC-008",
+          "name": "ヘッダー・フッター・日付・番号",
+          "phase": "P3",
+          "model": "HeaderFooter/Field",
+          "baseline": "preserved",
+          "acceptance": "表示フラグ・更新規則・配置を分離"
+        },
+        {
+          "id": "DOC-009",
+          "name": "ノート本文とノートページ",
+          "phase": "P3",
+          "model": "NotesPage",
+          "baseline": "partial",
+          "acceptance": "図形・画像・rich text・共有masterを保持"
+        },
+        {
+          "id": "DOC-010",
+          "name": "配布資料ページ・master",
+          "phase": "P3",
+          "model": "HandoutMaster",
+          "baseline": "preserved",
+          "acceptance": "印刷配置・ページ寸法・参照を維持"
+        },
+        {
+          "id": "DOC-011",
+          "name": "テンプレートからの文書作成",
+          "phase": "P3",
+          "model": "Template",
+          "baseline": "none",
+          "acceptance": "placeholderと共有資源を正しく実体化"
+        },
+        {
+          "id": "DOC-012",
+          "name": "文書表示設定・編集状態",
+          "phase": "P3",
+          "model": "ViewSettings",
+          "baseline": "preserved",
+          "acceptance": "zoom・guide・選択等を意味変更なしで保持"
+        }
+      ]
+    },
+    {
+      "id": "STY",
+      "name": "テーマ・レイアウト・継承",
+      "scope": "直接指定と実効外観を分離する。",
+      "native": {
+        "PPTX/PPTM": "theme、master/layout、placeholder、clrMap、style matrix",
+        "ODP": "default/named/automatic styles、page layout、master page、style family",
+        "Keynote": "テーマ・レイアウト・stylesheetのオブジェクト候補（版別確認）"
+      },
+      "sources": [
+        "S01",
+        "S02",
+        "S08",
+        "S10",
+        "S11",
+        "S14"
+      ],
+      "features": [
+        {
+          "id": "STY-001",
+          "name": "マスター・レイアウトの読取と編集",
+          "phase": "P3",
+          "model": "Master/Layout",
+          "baseline": "preserved",
+          "acceptance": "所有・参照・共有・削除影響を検査"
+        },
+        {
+          "id": "STY-002",
+          "name": "プレースホルダー種類・index",
+          "phase": "P3",
+          "model": "Placeholder",
+          "baseline": "partial",
+          "acceptance": "master/layoutの照合と未指定値を保持"
+        },
+        {
+          "id": "STY-003",
+          "name": "プレースホルダー継承と実効値",
+          "phase": "P3",
+          "model": "StyleResolver",
+          "baseline": "none",
+          "acceptance": "位置・文字・背景の継承出典を返す"
+        },
+        {
+          "id": "STY-004",
+          "name": "テーマ色schemeと色map",
+          "phase": "P3",
+          "model": "ThemeColors",
+          "baseline": "partial",
+          "acceptance": "accent・hlink・scheme overrideを順序どおり解決"
+        },
+        {
+          "id": "STY-005",
+          "name": "テーマフォント・言語script",
+          "phase": "P3",
+          "model": "ThemeFonts",
+          "baseline": "partial",
+          "acceptance": "Latin/EA/CS/supplementalの参照を維持"
+        },
+        {
+          "id": "STY-006",
+          "name": "テーマfill/line/effect matrix",
+          "phase": "P3",
+          "model": "ThemeStyles",
+          "baseline": "preserved",
+          "acceptance": "style referenceと直接overrideを区別"
+        },
+        {
+          "id": "STY-007",
+          "name": "名前付き文字・段落・図形styles",
+          "phase": "P3",
+          "model": "StyleSheet",
+          "baseline": "preserved",
+          "acceptance": "family・parent・cycle・defaultを検査"
+        },
+        {
+          "id": "STY-008",
+          "name": "自動styleと共有styleの管理",
+          "phase": "P3",
+          "model": "StyleIndex",
+          "baseline": "none",
+          "acceptance": "名前衝突を解消し未編集styleを保持"
+        },
+        {
+          "id": "STY-009",
+          "name": "背景・表styleの継承",
+          "phase": "P4",
+          "model": "StyleResolver",
+          "baseline": "partial",
+          "acceptance": "各regionとheader/banding規則を反映"
+        },
+        {
+          "id": "STY-010",
+          "name": "style解決と出典情報",
+          "phase": "P3",
+          "model": "ResolvedStyle",
+          "baseline": "none",
+          "acceptance": "未解決をnil/黒/ゼロで隠さない"
+        },
+        {
+          "id": "STY-011",
+          "name": "styleの実体化・テーマ変更",
+          "phase": "P3",
+          "model": "MaterializeStyle",
+          "baseline": "refused",
+          "acceptance": "影響範囲と外観差を計画に出す"
+        },
+        {
+          "id": "STY-012",
+          "name": "テーマの独立入出力",
+          "phase": "P3",
+          "model": "ThemeDocument",
+          "baseline": "none",
+          "acceptance": "THMX/KTH等の有効profileを検証"
+        }
+      ]
+    },
+    {
+      "id": "GEO",
+      "name": "図形・座標・接続",
+      "scope": "論理的な形、座標変換と参照を扱う。",
+      "native": {
+        "PPTX/PPTM": "sp/cxnSp/grpSp、xfrm、prstGeom/custGeom、geometry guides",
+        "ODP": "draw shapes/group/connector、svg paths、enhanced geometry、transform",
+        "Keynote": "drawable・geometry・shape/path候補（型とfieldを実測）"
+      },
+      "sources": [
+        "S01",
+        "S08",
+        "S10",
+        "S11",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "GEO-001",
+          "name": "frame・回転・反転",
+          "phase": "P1",
+          "model": "Rect/Transform2D",
+          "baseline": "basic",
+          "acceptance": "元の単位と変換順を保持"
+        },
+        {
+          "id": "GEO-002",
+          "name": "nested groupとchild coordinate space",
+          "phase": "P3",
+          "model": "Group",
+          "baseline": "partial",
+          "acceptance": "入れ子変換・group再構成・外観を照合"
+        },
+        {
+          "id": "GEO-003",
+          "name": "プリセット図形とadjustments",
+          "phase": "P3",
+          "model": "ShapeGeometry",
+          "baseline": "partial",
+          "acceptance": "全列挙値と調整式を詳細台帳で追う"
+        },
+        {
+          "id": "GEO-004",
+          "name": "カスタムgeometry・path・guides",
+          "phase": "P3",
+          "model": "PathGeometry",
+          "baseline": "preserved",
+          "acceptance": "arc/Bezier/closeと数式、未知命令を保持"
+        },
+        {
+          "id": "GEO-005",
+          "name": "connection pointsとconnector参照",
+          "phase": "P3",
+          "model": "Connector",
+          "baseline": "partial",
+          "acceptance": "endpoint ID/接続siteを移動・複製で更新"
+        },
+        {
+          "id": "GEO-006",
+          "name": "図形結合・分割・boolean geometry",
+          "phase": "P8",
+          "model": "GeometryOperations",
+          "baseline": "none",
+          "acceptance": "元pathと編集可能性を保持し精度を測定"
+        },
+        {
+          "id": "GEO-007",
+          "name": "描画順・前後移動",
+          "phase": "P1",
+          "model": "Elements",
+          "baseline": "basic",
+          "acceptance": "opaqueを含む順序とIDを維持"
+        },
+        {
+          "id": "GEO-008",
+          "name": "レイヤー・オブジェクトlock",
+          "phase": "P3",
+          "model": "Layer/Locks",
+          "baseline": "preserved",
+          "acceptance": "編集禁止属性と表示可否を維持"
+        },
+        {
+          "id": "GEO-009",
+          "name": "整列・分布・grid配置",
+          "phase": "P1",
+          "model": "Layout",
+          "baseline": "basic",
+          "acceptance": "変換座標とgap、負の領域を検査"
+        },
+        {
+          "id": "GEO-010",
+          "name": "clip・mask・複雑なshape outline",
+          "phase": "P3",
+          "model": "ClipPath",
+          "baseline": "preserved",
+          "acceptance": "clipと形本体を混同しない"
+        },
+        {
+          "id": "GEO-011",
+          "name": "ガイド・グリッド・snap設定",
+          "phase": "P3",
+          "model": "Guides",
+          "baseline": "preserved",
+          "acceptance": "編集補助情報を描画内容と分離"
+        },
+        {
+          "id": "GEO-012",
+          "name": "3D scene・camera・light・bevel",
+          "phase": "P5",
+          "model": "Scene3D",
+          "baseline": "preserved",
+          "acceptance": "2Dにflattenするとき外観差を診断"
+        }
+      ]
+    },
+    {
+      "id": "PNT",
+      "name": "色・塗り・線・効果",
+      "scope": "元の色表現と解決済み外観を区別する。",
+      "native": {
+        "PPTX/PPTM": "DrawingML color/fill/line/effect/scene properties",
+        "ODP": "style graphic properties、gradient/hatch/fill-image、opacity",
+        "Keynote": "style/effectのオブジェクト候補（対応可否は版別確認）"
+      },
+      "sources": [
+        "S01",
+        "S08",
+        "S10",
+        "S11"
+      ],
+      "features": [
+        {
+          "id": "PNT-001",
+          "name": "RGB/alpha/theme/system色",
+          "phase": "P3",
+          "model": "Color",
+          "baseline": "partial",
+          "acceptance": "fallbackと色参照、透明度を保持"
+        },
+        {
+          "id": "PNT-002",
+          "name": "色変換の順序・色空間",
+          "phase": "P3",
+          "model": "ColorTransform",
+          "baseline": "preserved",
+          "acceptance": "tint/shade/luminance等の順序を保持"
+        },
+        {
+          "id": "PNT-003",
+          "name": "solid/noneと背景fill参照",
+          "phase": "P3",
+          "model": "Fill",
+          "baseline": "basic",
+          "acceptance": "none・継承・未指定を区別"
+        },
+        {
+          "id": "PNT-004",
+          "name": "linear/path gradientとstops",
+          "phase": "P3",
+          "model": "Gradient",
+          "baseline": "preserved",
+          "acceptance": "位置・角度・複数stop・alphaを照合"
+        },
+        {
+          "id": "PNT-005",
+          "name": "pattern/hatch fill",
+          "phase": "P3",
+          "model": "PatternFill",
+          "baseline": "preserved",
+          "acceptance": "パターン種と前景背景色を保持"
+        },
+        {
+          "id": "PNT-006",
+          "name": "image fill/tile/stretch",
+          "phase": "P3",
+          "model": "ImageFill",
+          "baseline": "preserved",
+          "acceptance": "asset参照・scale・tile originを保持"
+        },
+        {
+          "id": "PNT-007",
+          "name": "線幅・dash・cap・join・compound",
+          "phase": "P3",
+          "model": "Stroke",
+          "baseline": "partial",
+          "acceptance": "全属性と列挙値、単位を詳細台帳へ"
+        },
+        {
+          "id": "PNT-008",
+          "name": "矢印の種類・長さ・幅",
+          "phase": "P3",
+          "model": "Arrowhead",
+          "baseline": "partial",
+          "acceptance": "両端の形とdimensionを保持"
+        },
+        {
+          "id": "PNT-009",
+          "name": "shadow/glow/soft edge",
+          "phase": "P5",
+          "model": "Effects",
+          "baseline": "preserved",
+          "acceptance": "effect順・blur・方向・距離を照合"
+        },
+        {
+          "id": "PNT-010",
+          "name": "reflectionと透明度",
+          "phase": "P5",
+          "model": "Reflection",
+          "baseline": "preserved",
+          "acceptance": "fade範囲・scale・offsetを保持"
+        },
+        {
+          "id": "PNT-011",
+          "name": "effect DAG・blend・filter",
+          "phase": "P5",
+          "model": "EffectGraph",
+          "baseline": "preserved",
+          "acceptance": "共有参照と未知effectを保持"
+        }
+      ]
+    },
+    {
+      "id": "TXT",
+      "name": "文字・段落・テキスト領域",
+      "scope": "テキスト抽出と書式付き編集・文字計測を分ける。",
+      "native": {
+        "PPTX/PPTM": "DrawingML txBody/r/p/fld/bodyPr/lstStyle、text style hierarchy",
+        "ODP": "text:p/span/list/ruby/fields、style paragraph/text properties",
+        "Keynote": "TSWP系text storage/style候補。機能はAppleガイド、内部対応は実測"
+      },
+      "sources": [
+        "S01",
+        "S08",
+        "S11",
+        "S19",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "TXT-001",
+          "name": "Unicode本文・空白・改行・tab",
+          "phase": "P1",
+          "model": "TextBody/Inline",
+          "baseline": "partial",
+          "acceptance": "段落break・soft break・tabを区別"
+        },
+        {
+          "id": "TXT-002",
+          "name": "rich text runsと範囲編集",
+          "phase": "P3",
+          "model": "TextRun/TextRange",
+          "baseline": "partial",
+          "acceptance": "外側のrun/link/fieldとgrapheme境界を保全"
+        },
+        {
+          "id": "TXT-003",
+          "name": "font family/size/script/language",
+          "phase": "P3",
+          "model": "Font",
+          "baseline": "basic",
+          "acceptance": "各scriptの指定・参照・未指定を維持"
+        },
+        {
+          "id": "TXT-004",
+          "name": "bold/italic/strike/caps",
+          "phase": "P3",
+          "model": "TextStyle",
+          "baseline": "partial",
+          "acceptance": "各種strike/capsをboolへ丸めない"
+        },
+        {
+          "id": "TXT-005",
+          "name": "underline種・色・線",
+          "phase": "P3",
+          "model": "Underline",
+          "baseline": "partial",
+          "acceptance": "double等の種類と独立書式を保持"
+        },
+        {
+          "id": "TXT-006",
+          "name": "character spacing/kerning/baseline",
+          "phase": "P3",
+          "model": "CharacterStyle",
+          "baseline": "preserved",
+          "acceptance": "tracking・上付下付の単位を維持"
+        },
+        {
+          "id": "TXT-007",
+          "name": "文字fill・outline・shadow",
+          "phase": "P5",
+          "model": "TextEffects",
+          "baseline": "preserved",
+          "acceptance": "glyphの効果とshapeの効果を区別"
+        },
+        {
+          "id": "TXT-008",
+          "name": "段落alignment/indent/margins",
+          "phase": "P3",
+          "model": "ParagraphStyle",
+          "baseline": "basic",
+          "acceptance": "RTL・分散・負indentと省略を保持"
+        },
+        {
+          "id": "TXT-009",
+          "name": "行間・段落前後の単位",
+          "phase": "P3",
+          "model": "LineSpacing",
+          "baseline": "partial",
+          "acceptance": "倍率とpoint指定を区別"
+        },
+        {
+          "id": "TXT-010",
+          "name": "箇条書き・番号・restart・階層",
+          "phase": "P3",
+          "model": "ListStyle",
+          "baseline": "partial",
+          "acceptance": "start/restart/levelと複数段落の意味を保持"
+        },
+        {
+          "id": "TXT-011",
+          "name": "画像bullet・bullet書式",
+          "phase": "P3",
+          "model": "BulletStyle",
+          "baseline": "preserved",
+          "acceptance": "画像/文字font/size/colorを維持"
+        },
+        {
+          "id": "TXT-012",
+          "name": "tab stops・leader",
+          "phase": "P3",
+          "model": "TabStops",
+          "baseline": "preserved",
+          "acceptance": "位置・種類・leaderとdefault tabを保持"
+        },
+        {
+          "id": "TXT-013",
+          "name": "段落既定runとend style",
+          "phase": "P3",
+          "model": "Paragraph",
+          "baseline": "basic",
+          "acceptance": "空段落・終端・既定書式を区別"
+        },
+        {
+          "id": "TXT-014",
+          "name": "TextBody余白・縦位置・wrap",
+          "phase": "P3",
+          "model": "TextBoxStyle",
+          "baseline": "basic",
+          "acceptance": "単位・継承・明示値を再読で照合"
+        },
+        {
+          "id": "TXT-015",
+          "name": "縦書き・RTL・文字回転",
+          "phase": "P3",
+          "model": "WritingMode",
+          "baseline": "preserved",
+          "acceptance": "CJK縦書きとbidi順を検証"
+        },
+        {
+          "id": "TXT-016",
+          "name": "CJK禁則・句読点・ruby",
+          "phase": "P3",
+          "model": "Typography/Ruby",
+          "baseline": "preserved",
+          "acceptance": "元指定の存在と対象形式との差を診断"
+        },
+        {
+          "id": "TXT-017",
+          "name": "columns・column gap・linked text",
+          "phase": "P5",
+          "model": "TextFlow",
+          "baseline": "preserved",
+          "acceptance": "機能の存在を形式別に確認しflowを維持"
+        },
+        {
+          "id": "TXT-018",
+          "name": "autofit・font scaling・overflow",
+          "phase": "P8",
+          "model": "TextFit",
+          "baseline": "preserved",
+          "acceptance": "不足環境はunknown、計測結果と元値を分離"
+        },
+        {
+          "id": "TXT-019",
+          "name": "text warp・WordArt相当",
+          "phase": "P5",
+          "model": "TextWarp",
+          "baseline": "preserved",
+          "acceptance": "warp geometryと編集文字を維持"
+        },
+        {
+          "id": "TXT-020",
+          "name": "日付・slide番号等のfields",
+          "phase": "P3",
+          "model": "Field",
+          "baseline": "partial",
+          "acceptance": "原式・表示cache・更新規則を保持"
+        },
+        {
+          "id": "TXT-021",
+          "name": "inline図形・数式・アンカー",
+          "phase": "P5",
+          "model": "InlineObject",
+          "baseline": "preserved",
+          "acceptance": "anchor/rangeと表示対象を再接続"
+        },
+        {
+          "id": "TXT-022",
+          "name": "検索・置換・本文抽出のscope",
+          "phase": "P1",
+          "model": "TextSearch",
+          "baseline": "partial",
+          "acceptance": "本文・notes・表の位置を正確に返す"
+        }
+      ]
+    },
+    {
+      "id": "IMG",
+      "name": "画像・ベクトル・フォント",
+      "scope": "画像バイトの保持と見た目の処理を分ける。",
+      "native": {
+        "PPTX/PPTM": "blip、media parts、SVG等の拡張、font parts",
+        "ODP": "draw:image、binary-data、xlink、font-face",
+        "Keynote": "Data資源、image/media info候補（digest等は実測）"
+      },
+      "sources": [
+        "S01",
+        "S03",
+        "S08",
+        "S11",
+        "S14"
+      ],
+      "features": [
+        {
+          "id": "IMG-001",
+          "name": "埋込画像・media type・遅延bytes",
+          "phase": "P1",
+          "model": "Asset/Image",
+          "baseline": "basic",
+          "acceptance": "CRC検査と参照、サイズを維持"
+        },
+        {
+          "id": "IMG-002",
+          "name": "外部画像URIと埋込切替",
+          "phase": "P3",
+          "model": "AssetSource",
+          "baseline": "partial",
+          "acceptance": "既定でnetwork取得せずリンクを保持"
+        },
+        {
+          "id": "IMG-003",
+          "name": "crop・source rectangle",
+          "phase": "P3",
+          "model": "ImageCrop",
+          "baseline": "preserved",
+          "acceptance": "負cropと範囲・縦横比を照合"
+        },
+        {
+          "id": "IMG-004",
+          "name": "mask・shape crop・clip",
+          "phase": "P3",
+          "model": "ImageMask",
+          "baseline": "preserved",
+          "acceptance": "元maskと画像を分離して維持"
+        },
+        {
+          "id": "IMG-005",
+          "name": "brightness/contrast/duotone等",
+          "phase": "P5",
+          "model": "ImageEffects",
+          "baseline": "preserved",
+          "acceptance": "非破壊パラメータと元画像を保持"
+        },
+        {
+          "id": "IMG-006",
+          "name": "SVGとfallback・EMF/WMF等",
+          "phase": "P5",
+          "model": "VectorAsset",
+          "baseline": "preserved",
+          "acceptance": "元assetを保持し描画不能を診断"
+        },
+        {
+          "id": "IMG-007",
+          "name": "HEIC/GIF/TIFF等の資源保持",
+          "phase": "P3",
+          "model": "Asset",
+          "baseline": "partial",
+          "acceptance": "decode能力とbyte保持を別表示"
+        },
+        {
+          "id": "IMG-008",
+          "name": "画像解像度・圧縮・縮小",
+          "phase": "P8",
+          "model": "AssetOptimization",
+          "baseline": "none",
+          "acceptance": "明示操作でのみ再圧縮、時間/RSS/品質を測定"
+        },
+        {
+          "id": "IMG-009",
+          "name": "埋込fontと使用制約flags",
+          "phase": "P5",
+          "model": "EmbeddedFont",
+          "baseline": "preserved",
+          "acceptance": "font bytes/face mapping/制約を維持"
+        },
+        {
+          "id": "IMG-010",
+          "name": "資源重複排除・共有参照",
+          "phase": "P1",
+          "model": "AssetStore",
+          "baseline": "partial",
+          "acceptance": "既存identityを変えず新規資源のみ共有"
+        },
+        {
+          "id": "IMG-011",
+          "name": "thumbnail/preview/poster",
+          "phase": "P3",
+          "model": "PreviewCache",
+          "baseline": "preserved",
+          "acceptance": "編集で古くなるcacheを適切に更新/診断"
+        }
+      ]
+    },
+    {
+      "id": "TBL",
+      "name": "表・セル・式",
+      "scope": "PowerPoint表、ODF表と埋込Calc、Keynoteの表を同じ能力と見なさない。",
+      "native": {
+        "PPTX/PPTM": "DrawingML table、table style、grid/merge。セル数式は別問題",
+        "ODP": "table要素と埋込spreadsheet、OpenFormulaは該当文書で別調査",
+        "Keynote": "TST系table候補。式と条件書式はApple機能資料で確認"
+      },
+      "sources": [
+        "S01",
+        "S08",
+        "S11",
+        "S16"
+      ],
+      "features": [
+        {
+          "id": "TBL-001",
+          "name": "行列gridと寸法",
+          "phase": "P4",
+          "model": "Table",
+          "baseline": "basic",
+          "acceptance": "空grid・非矩形・単位・最大cell予算を検査"
+        },
+        {
+          "id": "TBL-002",
+          "name": "rich textセルとtyped value",
+          "phase": "P4",
+          "model": "TableCell/CellValue",
+          "baseline": "partial",
+          "acceptance": "値・表示text・cacheを区別"
+        },
+        {
+          "id": "TBL-003",
+          "name": "merge/span/covered cells",
+          "phase": "P4",
+          "model": "MergeRegion",
+          "baseline": "partial",
+          "acceptance": "有効領域・continuation・編集後の再結合を照合"
+        },
+        {
+          "id": "TBL-004",
+          "name": "セルごとの四辺border・diagonal",
+          "phase": "P4",
+          "model": "CellBorders",
+          "baseline": "partial",
+          "acceptance": "隣接辺の優先順位を形式別に確定"
+        },
+        {
+          "id": "TBL-005",
+          "name": "cell fill/insets/vertical alignment",
+          "phase": "P4",
+          "model": "CellStyle",
+          "baseline": "partial",
+          "acceptance": "run書式とcell領域書式を分離"
+        },
+        {
+          "id": "TBL-006",
+          "name": "header/footer/banded rows/columns",
+          "phase": "P4",
+          "model": "TableStyle",
+          "baseline": "preserved",
+          "acceptance": "style領域とdirect overrideの優先順位を保持"
+        },
+        {
+          "id": "TBL-007",
+          "name": "table名・title・caption・lock",
+          "phase": "P4",
+          "model": "TableMetadata",
+          "baseline": "partial",
+          "acceptance": "nameと参照identityを区別"
+        },
+        {
+          "id": "TBL-008",
+          "name": "繰返し行列・hidden・header region",
+          "phase": "P4",
+          "model": "TableGrid",
+          "baseline": "none",
+          "acceptance": "対応する形式だけ展開し総cell予算を守る"
+        },
+        {
+          "id": "TBL-009",
+          "name": "日付・通貨・数値format",
+          "phase": "P4",
+          "model": "NumberFormat",
+          "baseline": "none",
+          "acceptance": "表現できない形式では表示と損失を診断"
+        },
+        {
+          "id": "TBL-010",
+          "name": "式・参照・cached value",
+          "phase": "P4",
+          "model": "TableFormula",
+          "baseline": "none",
+          "acceptance": "方言と再計算能力を明記し元式を保持"
+        },
+        {
+          "id": "TBL-011",
+          "name": "条件書式・ルール",
+          "phase": "P4",
+          "model": "ConditionalStyle",
+          "baseline": "none",
+          "acceptance": "targetと評価順、未対応expressionを保持"
+        },
+        {
+          "id": "TBL-012",
+          "name": "行列追加・削除・sort",
+          "phase": "P4",
+          "model": "TableEditing",
+          "baseline": "none",
+          "acceptance": "merge・式・リンク参照の更新を検査"
+        }
+      ]
+    },
+    {
+      "id": "CHT",
+      "name": "チャートとデータ",
+      "scope": "表示cache、編集用データ、外部/埋込データを区別する。",
+      "native": {
+        "PPTX/PPTM": "chart parts、DrawingML chart、Office chart extensions、embedded workbook",
+        "ODP": "chart document/series/axis、local table/外部source",
+        "Keynote": "TSCh系chart候補、2D/3D/interactiveはApple機能資料"
+      },
+      "sources": [
+        "S01",
+        "S03",
+        "S08",
+        "S17"
+      ],
+      "features": [
+        {
+          "id": "CHT-001",
+          "name": "column/bar/line/area/pie/doughnut",
+          "phase": "P4",
+          "model": "ChartKind",
+          "baseline": "preserved",
+          "acceptance": "全kind・stacking・series書式を詳細台帳で追う"
+        },
+        {
+          "id": "CHT-002",
+          "name": "scatter/bubble/radar/stock/surface",
+          "phase": "P4",
+          "model": "ChartKind",
+          "baseline": "preserved",
+          "acceptance": "x/y/sizeと欠損・scaleを維持"
+        },
+        {
+          "id": "CHT-003",
+          "name": "新しいchart typesと組合せchart",
+          "phase": "P5",
+          "model": "ExtendedChart",
+          "baseline": "preserved",
+          "acceptance": "histogram等の拡張schemaと対象版を別検証"
+        },
+        {
+          "id": "CHT-004",
+          "name": "series/category/pointとcache",
+          "phase": "P4",
+          "model": "ChartData",
+          "baseline": "preserved",
+          "acceptance": "index・欠損・空・値型・表示cacheを区別"
+        },
+        {
+          "id": "CHT-005",
+          "name": "埋込Workbook/外部データsource",
+          "phase": "P4",
+          "model": "ChartDataSource",
+          "baseline": "preserved",
+          "acceptance": "workbook・URI・参照式を整合させる"
+        },
+        {
+          "id": "CHT-006",
+          "name": "axes・log/date scale・secondary",
+          "phase": "P4",
+          "model": "ChartAxis",
+          "baseline": "preserved",
+          "acceptance": "cross・bounds・unitと自動値を区別"
+        },
+        {
+          "id": "CHT-007",
+          "name": "legend/title/data labels",
+          "phase": "P4",
+          "model": "ChartLabels",
+          "baseline": "preserved",
+          "acceptance": "rich text・位置・format・point overrideを維持"
+        },
+        {
+          "id": "CHT-008",
+          "name": "trendline/error bars/markers",
+          "phase": "P4",
+          "model": "ChartStatistics",
+          "baseline": "preserved",
+          "acceptance": "計算指定と元系列への参照を保持"
+        },
+        {
+          "id": "CHT-009",
+          "name": "chart layout/style/color schemes",
+          "phase": "P4",
+          "model": "ChartStyle",
+          "baseline": "preserved",
+          "acceptance": "auto/manual・theme参照・style partsを照合"
+        },
+        {
+          "id": "CHT-010",
+          "name": "3D chartのcamera/light/depth",
+          "phase": "P5",
+          "model": "Chart3D",
+          "baseline": "preserved",
+          "acceptance": "2D fallbackの外観差を診断"
+        },
+        {
+          "id": "CHT-011",
+          "name": "interactive chartとデータsets",
+          "phase": "P6",
+          "model": "InteractiveChart",
+          "baseline": "notApplicable",
+          "acceptance": "controls・sets・Magic Chartの動作を版別に試験"
+        },
+        {
+          "id": "CHT-012",
+          "name": "表/SwiftSheetsとのデータ交換",
+          "phase": "P4",
+          "model": "ChartDataAdapter",
+          "baseline": "none",
+          "acceptance": "式/cache/date epoch/number formatの差を診断"
+        }
+      ]
+    },
+    {
+      "id": "OBJ",
+      "name": "高度なオブジェクトと拡張",
+      "scope": "共通モデルに入らないものを安全に保持し段階的に編集モデルへ移す。",
+      "native": {
+        "PPTX/PPTM": "SmartArt dgm、OLE/ActiveX、OMML、ink、3D/extension parts",
+        "ODP": "embedded object、MathML、forms、draw enhanced geometry/3D",
+        "Keynote": "equation/drawing/3D/gallery等の候補（内部型は実測）"
+      },
+      "sources": [
+        "S01",
+        "S03",
+        "S08",
+        "S11",
+        "S19",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "OBJ-001",
+          "name": "SmartArt/diagramデータとlayout",
+          "phase": "P5",
+          "model": "Diagram",
+          "baseline": "preserved",
+          "acceptance": "data/layout/style/colors/描画cacheの依存を保全"
+        },
+        {
+          "id": "OBJ-002",
+          "name": "diagramの再配置・編集",
+          "phase": "P8",
+          "model": "DiagramLayout",
+          "baseline": "none",
+          "acceptance": "実アプリ同等性が未確認なら外観差を診断"
+        },
+        {
+          "id": "OBJ-003",
+          "name": "OLE埋込/linked document",
+          "phase": "P5",
+          "model": "EmbeddedObject",
+          "baseline": "preserved",
+          "acceptance": "元binaryとpreview、関係を維持"
+        },
+        {
+          "id": "OBJ-004",
+          "name": "ActiveX/form control",
+          "phase": "P7",
+          "model": "Control",
+          "baseline": "preserved",
+          "acceptance": "プロパティ・資源を保持し実行しない"
+        },
+        {
+          "id": "OBJ-005",
+          "name": "OMML/MathML/LaTeX数式",
+          "phase": "P5",
+          "model": "Equation",
+          "baseline": "preserved",
+          "acceptance": "原式と表示資源、各方言を分離"
+        },
+        {
+          "id": "OBJ-006",
+          "name": "ink/手描きstroke",
+          "phase": "P5",
+          "model": "Ink",
+          "baseline": "preserved",
+          "acceptance": "pressure/time/pathと元resourceを保持"
+        },
+        {
+          "id": "OBJ-007",
+          "name": "3D model資源と配置",
+          "phase": "P5",
+          "model": "Model3D",
+          "baseline": "preserved",
+          "acceptance": "model format・poster・cameraを別に保持"
+        },
+        {
+          "id": "OBJ-008",
+          "name": "画像gallery・interactive object",
+          "phase": "P6",
+          "model": "Gallery",
+          "baseline": "notApplicable",
+          "acceptance": "item順・control・buildと変換差を試験"
+        },
+        {
+          "id": "OBJ-009",
+          "name": "custom XML/任意extension",
+          "phase": "P1",
+          "model": "OpaquePart",
+          "baseline": "preserved",
+          "acceptance": "未編集bytesと依存参照を保全"
+        },
+        {
+          "id": "OBJ-010",
+          "name": "AlternateContentの選択と保持",
+          "phase": "P1",
+          "model": "AlternateContent",
+          "baseline": "preserved",
+          "acceptance": "active branchだけで全分岐を上書きしない"
+        },
+        {
+          "id": "OBJ-011",
+          "name": "opaque objectの位置・説明",
+          "phase": "P1",
+          "model": "OpaqueElement",
+          "baseline": "partial",
+          "acceptance": "空の既知shapeに偽装せずidentityを保持"
+        }
+      ]
+    },
+    {
+      "id": "MED",
+      "name": "音声・動画・録画",
+      "scope": "パッケージ保持、再生指定、実際の再生を分ける。",
+      "native": {
+        "PPTX/PPTM": "audio/video/media parts、timing、poster、trim、Office拡張",
+        "ODP": "draw:plugin/media参照、presentation音声とanimation cues",
+        "Keynote": "media・soundtrack・recording候補（Apple資料と実測）"
+      },
+      "sources": [
+        "S01",
+        "S03",
+        "S08",
+        "S11",
+        "S20",
+        "S14"
+      ],
+      "features": [
+        {
+          "id": "MED-001",
+          "name": "埋込/linked audio・video",
+          "phase": "P5",
+          "model": "Media",
+          "baseline": "preserved",
+          "acceptance": "binary・URI・media type・関係を維持"
+        },
+        {
+          "id": "MED-002",
+          "name": "poster・thumbnail・preview",
+          "phase": "P5",
+          "model": "MediaPoster",
+          "baseline": "preserved",
+          "acceptance": "表示画像と本体参照を分離"
+        },
+        {
+          "id": "MED-003",
+          "name": "trim・volume・mute・loop",
+          "phase": "P5",
+          "model": "MediaPlayback",
+          "baseline": "preserved",
+          "acceptance": "時間単位と再生範囲を再読で照合"
+        },
+        {
+          "id": "MED-004",
+          "name": "start trigger・クリック動作",
+          "phase": "P5",
+          "model": "MediaCue",
+          "baseline": "preserved",
+          "acceptance": "timelineとmediaの参照を一致"
+        },
+        {
+          "id": "MED-005",
+          "name": "bookmark/cue points",
+          "phase": "P5",
+          "model": "MediaBookmark",
+          "baseline": "preserved",
+          "acceptance": "cue削除やtrim時の影響を診断"
+        },
+        {
+          "id": "MED-006",
+          "name": "soundtrack・複数枚の継続再生",
+          "phase": "P5",
+          "model": "Soundtrack",
+          "baseline": "preserved",
+          "acceptance": "スライドlocal/globalの適用範囲を区別"
+        },
+        {
+          "id": "MED-007",
+          "name": "ナレーション・録画・rehearsal",
+          "phase": "P5",
+          "model": "Recording",
+          "baseline": "preserved",
+          "acceptance": "audioとイベント時刻の同期を保持"
+        },
+        {
+          "id": "MED-008",
+          "name": "live video/online videoのdescriptor",
+          "phase": "P6",
+          "model": "LiveMedia",
+          "baseline": "none",
+          "acceptance": "ファイル内設定のみ保持しservice再現と区別"
+        },
+        {
+          "id": "MED-009",
+          "name": "subtitle/captions等の資源",
+          "phase": "P5",
+          "model": "Captions",
+          "baseline": "preserved",
+          "acceptance": "対応形式と版を確定し元text/URIを保持"
+        },
+        {
+          "id": "MED-010",
+          "name": "transcode・codec対応",
+          "phase": "P8",
+          "model": "MediaConverter",
+          "baseline": "none",
+          "acceptance": "明示操作だけ変換し品質・時間/RSSを測定"
+        }
+      ]
+    },
+    {
+      "id": "ANI",
+      "name": "遷移・アニメーション・時間",
+      "scope": "単なるeffect名の対応では動作を再現できない。",
+      "native": {
+        "PPTX/PPTM": "p:transition/p:timing、sequence/parallel、Office拡張Morph",
+        "ODP": "anim/SMIL語彙、presentation transition properties",
+        "Keynote": "build in/action/out・transition・Magic Move（内部型は実測）"
+      },
+      "sources": [
+        "S01",
+        "S03",
+        "S08",
+        "S18",
+        "S17"
+      ],
+      "features": [
+        {
+          "id": "ANI-001",
+          "name": "slide transitionの種類・方向",
+          "phase": "P5",
+          "model": "Transition",
+          "baseline": "preserved",
+          "acceptance": "全effect enumと未知拡張を台帳へ"
+        },
+        {
+          "id": "ANI-002",
+          "name": "transition durationとadvance",
+          "phase": "P5",
+          "model": "TransitionTiming",
+          "baseline": "preserved",
+          "acceptance": "クリック/自動・delay・soundを保持"
+        },
+        {
+          "id": "ANI-003",
+          "name": "Morph/Magic Moveのobject対応",
+          "phase": "P6",
+          "model": "ObjectMatching",
+          "baseline": "preserved",
+          "acceptance": "slide跨ぎidentityと文字対応を版別に検証"
+        },
+        {
+          "id": "ANI-004",
+          "name": "build in/out/emphasis/action",
+          "phase": "P5",
+          "model": "Animation",
+          "baseline": "preserved",
+          "acceptance": "入退場とaction、未知effectを区別"
+        },
+        {
+          "id": "ANI-005",
+          "name": "sequence/parallelとtrigger graph",
+          "phase": "P5",
+          "model": "Timeline",
+          "baseline": "preserved",
+          "acceptance": "click/with/after・条件・参照を維持"
+        },
+        {
+          "id": "ANI-006",
+          "name": "keyframes・motion path・transform",
+          "phase": "P5",
+          "model": "KeyframeTrack",
+          "baseline": "preserved",
+          "acceptance": "座標系・easing・value型・pathを照合"
+        },
+        {
+          "id": "ANI-007",
+          "name": "repeat/reverse/acceleration/fill",
+          "phase": "P5",
+          "model": "TimingProperties",
+          "baseline": "preserved",
+          "acceptance": "無限repeatと終了状態を保持"
+        },
+        {
+          "id": "ANI-008",
+          "name": "paragraph/word/character builds",
+          "phase": "P5",
+          "model": "TextBuild",
+          "baseline": "preserved",
+          "acceptance": "target rangeと順序をtext編集時に検査"
+        },
+        {
+          "id": "ANI-009",
+          "name": "chart/diagram/group builds",
+          "phase": "P5",
+          "model": "ObjectBuild",
+          "baseline": "preserved",
+          "acceptance": "series/point/childへの参照を維持"
+        },
+        {
+          "id": "ANI-010",
+          "name": "interactive triggers・bookmark同期",
+          "phase": "P5",
+          "model": "EventTrigger",
+          "baseline": "preserved",
+          "acceptance": "target削除・media trimの影響を診断"
+        },
+        {
+          "id": "ANI-011",
+          "name": "effect presetsと固有パラメータ",
+          "phase": "P5",
+          "model": "EffectDescriptor",
+          "baseline": "preserved",
+          "acceptance": "共通化できない指定をopaqueで保持"
+        },
+        {
+          "id": "ANI-012",
+          "name": "タイムライン評価と再生検証",
+          "phase": "P8",
+          "model": "TimelineEvaluator",
+          "baseline": "none",
+          "acceptance": "イベント列・時間・画像を実アプリと比較"
+        }
+      ]
+    },
+    {
+      "id": "SHW",
+      "name": "発表・操作・印刷設定",
+      "scope": "ファイル内の指定をモデル化し、アプリのUIや外部機器と分ける。",
+      "native": {
+        "PPTX/PPTM": "showPr/custom show、hyperlink actions、print/notes/handout/view settings",
+        "ODP": "presentation settings、events、print style",
+        "Keynote": "presentation navigation/recording/notes設定候補（版別確認）"
+      },
+      "sources": [
+        "S01",
+        "S08",
+        "S11",
+        "S20"
+      ],
+      "features": [
+        {
+          "id": "SHW-001",
+          "name": "external/internal hyperlink",
+          "phase": "P1",
+          "model": "Link",
+          "baseline": "basic",
+          "acceptance": "外部URIとSlideIDを区別し編集で参照維持"
+        },
+        {
+          "id": "SHW-002",
+          "name": "shape・hover・クリックactions",
+          "phase": "P5",
+          "model": "Interaction",
+          "baseline": "partial",
+          "acceptance": "URI/slide/command/macro actionを区別"
+        },
+        {
+          "id": "SHW-003",
+          "name": "kiosk・self-playing・loop設定",
+          "phase": "P5",
+          "model": "ShowSettings",
+          "baseline": "preserved",
+          "acceptance": "再生modeとnavigation制約を保持"
+        },
+        {
+          "id": "SHW-004",
+          "name": "show範囲・custom show選択",
+          "phase": "P5",
+          "model": "ShowSelection",
+          "baseline": "preserved",
+          "acceptance": "全体/範囲/列挙の違いを維持"
+        },
+        {
+          "id": "SHW-005",
+          "name": "laser/pen・記録された注釈",
+          "phase": "P5",
+          "model": "PresentationAnnotation",
+          "baseline": "preserved",
+          "acceptance": "ファイルに保存される内容だけを保全"
+        },
+        {
+          "id": "SHW-006",
+          "name": "presenter notes・表示設定",
+          "phase": "P5",
+          "model": "PresenterSettings",
+          "baseline": "partial",
+          "acceptance": "notes内容と端末依存UI設定を区別"
+        },
+        {
+          "id": "SHW-007",
+          "name": "print page・handout・notes layout",
+          "phase": "P3",
+          "model": "PrintSettings",
+          "baseline": "preserved",
+          "acceptance": "scale・color・range・page configを保持"
+        },
+        {
+          "id": "SHW-008",
+          "name": "PDF/画像の選択範囲",
+          "phase": "P8",
+          "model": "RenderSelection",
+          "baseline": "none",
+          "acceptance": "hidden/notes/build時点を明示"
+        },
+        {
+          "id": "SHW-009",
+          "name": "動画・GIF・HTML配布",
+          "phase": "P8",
+          "model": "ExportOptions",
+          "baseline": "none",
+          "acceptance": "再生範囲とeditability損失を報告"
+        }
+      ]
+    },
+    {
+      "id": "REV",
+      "name": "コメント・アクセシビリティ",
+      "scope": "著者情報・議論と読み上げ情報を保持する。",
+      "native": {
+        "PPTX/PPTM": "comments/authors/threaded comment拡張、cNvPr等のdescription",
+        "ODP": "office annotation、author/date、draw description/title",
+        "Keynote": "annotation storage・accessibility descriptor候補（版別確認）"
+      },
+      "sources": [
+        "S01",
+        "S03",
+        "S08",
+        "S11",
+        "S14"
+      ],
+      "features": [
+        {
+          "id": "REV-001",
+          "name": "コメント本文・著者・日時・位置",
+          "phase": "P5",
+          "model": "Comment",
+          "baseline": "preserved",
+          "acceptance": "ID・time zone・anchorを保持"
+        },
+        {
+          "id": "REV-002",
+          "name": "返信thread・解決状態・mentions",
+          "phase": "P5",
+          "model": "CommentThread",
+          "baseline": "preserved",
+          "acceptance": "形式/版ごとの支援範囲を分ける"
+        },
+        {
+          "id": "REV-003",
+          "name": "変更履歴・共同編集関連metadata",
+          "phase": "P7",
+          "model": "RevisionMetadata",
+          "baseline": "preserved",
+          "acceptance": "存在する情報を保持しserver機能と区別"
+        },
+        {
+          "id": "REV-004",
+          "name": "代替文・title・decorative flag",
+          "phase": "P3",
+          "model": "Accessibility",
+          "baseline": "partial",
+          "acceptance": "画像以外の対象と未指定を維持"
+        },
+        {
+          "id": "REV-005",
+          "name": "読み上げ順・言語・見出し",
+          "phase": "P5",
+          "model": "ReadingOrder",
+          "baseline": "preserved",
+          "acceptance": "描画順と読み順を同一視しない"
+        },
+        {
+          "id": "REV-006",
+          "name": "table header・chart/equation説明",
+          "phase": "P5",
+          "model": "AccessibleContent",
+          "baseline": "none",
+          "acceptance": "構造情報と説明文を分離"
+        },
+        {
+          "id": "REV-007",
+          "name": "アクセシビリティ検査",
+          "phase": "P8",
+          "model": "AccessibilityAudit",
+          "baseline": "none",
+          "acceptance": "判定可能/不明と修正箇所を返す"
+        },
+        {
+          "id": "REV-008",
+          "name": "個人情報を除く共有用出力",
+          "phase": "P7",
+          "model": "MetadataPolicy",
+          "baseline": "none",
+          "acceptance": "明示対象だけ除去し結果に診断を残す"
+        }
+      ]
+    },
+    {
+      "id": "MTA",
+      "name": "文書プロパティと整合性",
+      "scope": "主内容以外のメタデータも意味のある文書情報として扱う。",
+      "native": {
+        "PPTX/PPTM": "docProps core/app/custom、thumbnail、signature/customXML",
+        "ODP": "meta.xml、settings.xml、RDF、manifest metadata",
+        "Keynote": "Metadata/plist、document identifier、version history候補"
+      },
+      "sources": [
+        "S01",
+        "S07",
+        "S08",
+        "S14"
+      ],
+      "features": [
+        {
+          "id": "MTA-001",
+          "name": "標準properties・作成更新日時",
+          "phase": "P3",
+          "model": "Metadata",
+          "baseline": "partial",
+          "acceptance": "型・timezone・lastModifiedBy・revisionを保持"
+        },
+        {
+          "id": "MTA-002",
+          "name": "custom properties・型付き値",
+          "phase": "P3",
+          "model": "CustomProperty",
+          "baseline": "preserved",
+          "acceptance": "date/int/bool/stringと未知型を保持"
+        },
+        {
+          "id": "MTA-003",
+          "name": "producer名・版・document version",
+          "phase": "P1",
+          "model": "SourceInfo",
+          "baseline": "preserved",
+          "acceptance": "検証済みproducer/profileと区別"
+        },
+        {
+          "id": "MTA-004",
+          "name": "文書ID・creation ID・UUID",
+          "phase": "P1",
+          "model": "SourceIdentity",
+          "baseline": "partial",
+          "acceptance": "複製時に必要なIDだけ再生成"
+        },
+        {
+          "id": "MTA-005",
+          "name": "RDF・リンクされたmetadata",
+          "phase": "P7",
+          "model": "MetadataGraph",
+          "baseline": "preserved",
+          "acceptance": "語彙とsubject参照を保全"
+        },
+        {
+          "id": "MTA-006",
+          "name": "サムネイル等のcache整合",
+          "phase": "P3",
+          "model": "CachePolicy",
+          "baseline": "preserved",
+          "acceptance": "主内容編集後の陳腐化を扱う"
+        },
+        {
+          "id": "MTA-007",
+          "name": "スキーマ順・namespace・既定値",
+          "phase": "P1",
+          "model": "NativePatch",
+          "baseline": "partial",
+          "acceptance": "同名local名を異namespaceと混同しない"
+        },
+        {
+          "id": "MTA-008",
+          "name": "未知部分の依存inventory",
+          "phase": "P1",
+          "model": "PreservationInventory",
+          "baseline": "partial",
+          "acceptance": "所属・参照・未知参照の有無を記録"
+        }
+      ]
+    },
+    {
+      "id": "SEC",
+      "name": "保護・署名・入力制限",
+      "scope": "安全な失敗と原本の保護も完全な読書きの一部。",
+      "native": {
+        "PPTX/PPTM": "CFB/Office暗号・VBA・OPC signature・保護metadata",
+        "ODP": "manifest暗号・document signatures・script libraries",
+        "Keynote": "password暗号とgeneration識別（解析資料と実測が必要）"
+      },
+      "sources": [
+        "S01",
+        "S05",
+        "S06",
+        "S07",
+        "S08",
+        "S14"
+      ],
+      "features": [
+        {
+          "id": "SEC-001",
+          "name": "OOXML password復号/暗号化",
+          "phase": "P7",
+          "model": "SlideDecrypt/Encrypt",
+          "baseline": "refused",
+          "acceptance": "暗号方式・wrong password・破損を区別"
+        },
+        {
+          "id": "SEC-002",
+          "name": "ODF password復号/暗号化",
+          "phase": "P7",
+          "model": "ODPEncryption",
+          "baseline": "notApplicable",
+          "acceptance": "manifest方式・暗号metadata・checksumを検証"
+        },
+        {
+          "id": "SEC-003",
+          "name": "Keynote password文書",
+          "phase": "P7",
+          "model": "KeynoteEncryption",
+          "baseline": "notApplicable",
+          "acceptance": "対象世代を限定して復号/再暗号化を検証"
+        },
+        {
+          "id": "SEC-004",
+          "name": "旧PPT暗号とCFB streams",
+          "phase": "P7",
+          "model": "LegacyEncryption",
+          "baseline": "refused",
+          "acceptance": "文書種と暗号方式を正確に判定"
+        },
+        {
+          "id": "SEC-005",
+          "name": "macro/scriptの保持と除去",
+          "phase": "P7",
+          "model": "MacroPolicy",
+          "baseline": "partial",
+          "acceptance": "暗黙削除を拒否し削除した関連物を報告"
+        },
+        {
+          "id": "SEC-006",
+          "name": "電子署名の保持・検証",
+          "phase": "P7",
+          "model": "SignatureInfo",
+          "baseline": "partial",
+          "acceptance": "未変更byte一致と暗号的validを区別"
+        },
+        {
+          "id": "SEC-007",
+          "name": "署名除去・再署名",
+          "phase": "P7",
+          "model": "Signing",
+          "baseline": "refused",
+          "acceptance": "明示操作と対象・鍵管理を分離"
+        },
+        {
+          "id": "SEC-008",
+          "name": "編集制限・IRM・感度label情報",
+          "phase": "P7",
+          "model": "ProtectionInfo",
+          "baseline": "preserved",
+          "acceptance": "unsupported protected inputを安全に拒否"
+        },
+        {
+          "id": "SEC-009",
+          "name": "ZIP bomb・XML/IWA予算",
+          "phase": "P1",
+          "model": "ReadBudget",
+          "baseline": "partial",
+          "acceptance": "全体共有の展開量・node・object上限を守る"
+        },
+        {
+          "id": "SEC-010",
+          "name": "表反復・参照・時間graph予算",
+          "phase": "P1",
+          "model": "ModelBudget",
+          "baseline": "none",
+          "acceptance": "containerが小さくても巨大modelを拒否"
+        },
+        {
+          "id": "SEC-011",
+          "name": "外部参照/DTD/ENTITY・マクロ実行",
+          "phase": "P1",
+          "model": "ExternalResourcePolicy",
+          "baseline": "basic",
+          "acceptance": "読書きで外部取得や実行を行わない"
+        },
+        {
+          "id": "SEC-012",
+          "name": "ディレクトリ・path/symlink安全性",
+          "phase": "P6",
+          "model": "PackageSource",
+          "baseline": "partial",
+          "acceptance": "traversal/正規化衝突/入れ子上限を検査"
+        }
+      ]
+    },
+    {
+      "id": "IO",
+      "name": "検査・保存・巨大文書",
+      "scope": "速度・メモリと診断可能性を操作契約で扱う。",
+      "native": {
+        "PPTX/PPTM": "slide別partの遅延読取・patch・ZIP file writer",
+        "ODP": "共有styleと単一content.xmlのincremental parse/patch",
+        "Keynote": "IWA索引と必要object/resourceの遅延decode（実測）"
+      },
+      "sources": [
+        "S01",
+        "S07",
+        "S08",
+        "S14",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "IO-001",
+          "name": "inspectと根拠つきsummary",
+          "phase": "P1",
+          "model": "InspectOptions",
+          "baseline": "partial",
+          "acceptance": "declared/scanned/unknown countを区別"
+        },
+        {
+          "id": "IO-002",
+          "name": "能力一覧とprofile query",
+          "phase": "P0",
+          "model": "CodecCapabilities",
+          "baseline": "none",
+          "acceptance": "read/create/edit/preserve/render/playを別表示"
+        },
+        {
+          "id": "IO-003",
+          "name": "遅延slide readerと選択読取",
+          "phase": "P2",
+          "model": "SlideReader",
+          "baseline": "none",
+          "acceptance": "省略slideを空modelにしない"
+        },
+        {
+          "id": "IO-004",
+          "name": "async sequenceとcancel",
+          "phase": "P2",
+          "model": "SlideSequence",
+          "baseline": "none",
+          "acceptance": "需要駆動でbufferと停止を制御"
+        },
+        {
+          "id": "IO-005",
+          "name": "新規文書streaming writer",
+          "phase": "P3",
+          "model": "StreamingWriter",
+          "baseline": "none",
+          "acceptance": "append/close/cancelと未解決IDを検査"
+        },
+        {
+          "id": "IO-006",
+          "name": "原子的file保存・失敗時原本維持",
+          "phase": "P1",
+          "model": "FileTarget",
+          "baseline": "basic",
+          "acceptance": "disk full/cancelで出力先を部分上書きしない"
+        },
+        {
+          "id": "IO-007",
+          "name": "大容量file直接出力",
+          "phase": "P2",
+          "model": "SaveResult",
+          "baseline": "none",
+          "acceptance": "Data全体の保持なしでwarningsを返す"
+        },
+        {
+          "id": "IO-008",
+          "name": "未変更byte一致",
+          "phase": "P1",
+          "model": "PreservationStore",
+          "baseline": "basic",
+          "acceptance": "入力全byteと比較して保証"
+        },
+        {
+          "id": "IO-009",
+          "name": "編集の依存graph patch",
+          "phase": "P1",
+          "model": "SavePlan",
+          "baseline": "partial",
+          "acceptance": "変更範囲と未知参照を計画・検査"
+        },
+        {
+          "id": "IO-010",
+          "name": "bounded並行読取・shared budget",
+          "phase": "P2",
+          "model": "ReadConcurrency",
+          "baseline": "none",
+          "acceptance": "決定的順序と実測working setを守る"
+        },
+        {
+          "id": "IO-011",
+          "name": "asset/style cache・eviction",
+          "phase": "P2",
+          "model": "CacheBudget",
+          "baseline": "partial",
+          "acceptance": "強制展開せずbytes budgetで管理"
+        }
+      ]
+    },
+    {
+      "id": "CNV",
+      "name": "変換・診断・編集契約",
+      "scope": "形式の機能差を利用者が保存前に判断できるようにする。",
+      "native": {
+        "PPTX/PPTM": "OOXMLモデルと未対応raw partsの二層",
+        "ODP": "ODFモデルと未知XML/style/embedded objectの二層",
+        "Keynote": "共通modelと未知field/object graphの二層（版別検証）"
+      },
+      "sources": [
+        "S01",
+        "S08",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "CNV-001",
+          "name": "保存前のloss/unsafe edit計画",
+          "phase": "P1",
+          "model": "SavePlan",
+          "baseline": "partial",
+          "acceptance": "位置・feature・理由・actionを返す"
+        },
+        {
+          "id": "CNV-002",
+          "name": "read/write両段階の変換診断",
+          "phase": "P4",
+          "model": "ConversionResult",
+          "baseline": "none",
+          "acceptance": "sourceで未解釈だった情報も失わず報告"
+        },
+        {
+          "id": "CNV-003",
+          "name": "明示loss policyとfallback",
+          "phase": "P4",
+          "model": "ConversionOptions",
+          "baseline": "partial",
+          "acceptance": "unsafe model/参照破損は許可で迂回しない"
+        },
+        {
+          "id": "CNV-004",
+          "name": "stale planと原本外部変更検出",
+          "phase": "P1",
+          "model": "SourceSnapshot",
+          "baseline": "none",
+          "acceptance": "model/assets/options/sourceの変更を検知"
+        },
+        {
+          "id": "CNV-005",
+          "name": "参照を保つimport/duplicate",
+          "phase": "P1",
+          "model": "ImportPlan",
+          "baseline": "refused",
+          "acceptance": "opaque依存が不明なら編集を拒否"
+        },
+        {
+          "id": "CNV-006",
+          "name": "編集transaction・rollback",
+          "phase": "P1",
+          "model": "Transaction",
+          "baseline": "none",
+          "acceptance": "closure失敗で部分model変更を反映しない"
+        },
+        {
+          "id": "CNV-007",
+          "name": "構造diff・change summary",
+          "phase": "P1",
+          "model": "PresentationDiff",
+          "baseline": "none",
+          "acceptance": "IDと意味を基に変更対象を報告"
+        },
+        {
+          "id": "CNV-008",
+          "name": "renderer fallbackと外観固定",
+          "phase": "P8",
+          "model": "ConversionFallback",
+          "baseline": "none",
+          "acceptance": "image化と文字のeditability損失を診断"
+        },
+        {
+          "id": "CNV-009",
+          "name": "PPTX↔ODP↔Keynoteの全方向",
+          "phase": "P6",
+          "model": "ConversionMatrix",
+          "baseline": "refused",
+          "acceptance": "6方向を元producer×dest profileで検証"
+        }
+      ]
+    },
+    {
+      "id": "QA",
+      "name": "検証・性能・スキーマ追跡",
+      "scope": "機能数や成功件数だけで互換性を判定しない。",
+      "native": {
+        "PPTX/PPTM": "OOXML XSD/拡張と実アプリ、MS-PPT record台帳",
+        "ODP": "ODF RNG/プロパティ表とLibreOffice実アプリ",
+        "Keynote": "app version/registry/unknown typesとKeynote実アプリ"
+      },
+      "sources": [
+        "S01",
+        "S03",
+        "S05",
+        "S07",
+        "S08",
+        "S11",
+        "S15"
+      ],
+      "features": [
+        {
+          "id": "QA-001",
+          "name": "全schema/field/recordの詳細台帳",
+          "phase": "P0",
+          "model": "CoverageLedger",
+          "baseline": "none",
+          "acceptance": "reachable項目の未分類ゼロ、対象外理由を記録"
+        },
+        {
+          "id": "QA-002",
+          "name": "機能ごとの架空producer fixtures",
+          "phase": "P0",
+          "model": "FixtureManifest",
+          "baseline": "partial",
+          "acceptance": "read/create/edit/preserve/convertの証拠を紐付け"
+        },
+        {
+          "id": "QA-003",
+          "name": "独立parser・schema検証",
+          "phase": "P0",
+          "model": "InteropOracle",
+          "baseline": "partial",
+          "acceptance": "対応範囲と未判定を可視化"
+        },
+        {
+          "id": "QA-004",
+          "name": "実アプリopen/resave・修復要求",
+          "phase": "P0",
+          "model": "ApplicationOracle",
+          "baseline": "partial",
+          "acceptance": "版・OS・保存可否を記録し未実施を区別"
+        },
+        {
+          "id": "QA-005",
+          "name": "画像/PDFの外観比較",
+          "phase": "P8",
+          "model": "VisualOracle",
+          "baseline": "partial",
+          "acceptance": "同フォント/OSで差と許容値を記録"
+        },
+        {
+          "id": "QA-006",
+          "name": "再生・interactive動作比較",
+          "phase": "P8",
+          "model": "PlaybackOracle",
+          "baseline": "none",
+          "acceptance": "イベント時刻・録画・操作結果を照合"
+        },
+        {
+          "id": "QA-007",
+          "name": "破損negative/fuzz・参照graph検査",
+          "phase": "P1",
+          "model": "SafetyOracle",
+          "baseline": "partial",
+          "acceptance": "truncated/overflow/cycle/unknown依存を検出"
+        },
+        {
+          "id": "QA-008",
+          "name": "時間とpeak RSS・規模別benchmark",
+          "phase": "P2",
+          "model": "BenchmarkSuite",
+          "baseline": "partial",
+          "acceptance": "同じ操作で時間/RSSを併記、比較は交互実行"
+        },
+        {
+          "id": "QA-009",
+          "name": "API consumer/部分リンク/Swift6",
+          "phase": "P1",
+          "model": "APIContract",
+          "baseline": "partial",
+          "acceptance": "機能追加でも第三者codecと現行作例が動く"
+        }
+      ]
+    }
+  ]
+}

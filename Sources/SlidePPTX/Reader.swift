@@ -2,9 +2,15 @@ import Foundation
 import SlideCore
 
 /// PowerPointのOPCとPresentationMLを読み書きする形式別コーデック。
-public struct PPTXCodec: PresentationCodec {
+public struct PPTXCodec: PreservationInspectingCodec, SlideImportingCodec {
     public let format: PresentationFormat
     public init(macroEnabled: Bool = false) { format = macroEnabled ? .pptm : .pptx }
+    public var capabilities: CodecCapabilities {
+        .init(format: format, operations: [
+            .inspect: .partial, .read: .partial, .create: format == .pptx ? .partial : .unsupported,
+            .edit: .partial, .preserve: .partial, .convert: .unsupported, .render: .unsupported, .play: .unsupported
+        ], notes: "直接指定の基本要素と部分編集。継承外観・再生は未解釈。未知内容は原本保持、危険編集は拒否。新規作成はPPTXのみ。詳細は対応台帳を参照。", features: PPTXFeatureCapabilities.features(for: format))
+    }
     public func read(_ data: Data, options: ReadOptions = .init()) throws -> ReadResult {
         let reader = try PPTXReader(data, options: options)
         guard reader.package.format == format else { throw SlideError.unknownFormat }
@@ -16,6 +22,19 @@ public struct PPTXCodec: PresentationCodec {
         return try reader.inspect()
     }
     public func write(_ presentation: Presentation, options: WriteOptions = .init()) throws -> WriteResult { try PPTXWriter(presentation, format: format, options: options).write() }
+    public func inspectPreservation(_ presentation: Presentation) throws -> PackageGraph {
+        guard let storage = presentation.storage else { return .init() }
+        guard presentation.sourceFormat == format else { throw SlideError.unknownFormat }
+        return try PPTXInventory.build(storage)
+    }
+    @discardableResult public func importSlide(id: String, from source: Presentation, into destination: inout Presentation,
+        at index: Int?, options: SlideImportOptions) throws -> String {
+        try PPTXCloner.importSlide(id: id, source: source, destination: &destination, index: index, options: options, duplicate: false, format: format)
+    }
+    @discardableResult public func duplicateSlide(id: String, in presentation: inout Presentation, at index: Int?) throws -> String {
+        let source = presentation
+        return try PPTXCloner.importSlide(id: id, source: source, destination: &presentation, index: index, options: .init(), duplicate: true, format: format)
+    }
 }
 extension Codec {
     public static let pptx = Codec(PPTXCodec())
@@ -27,9 +46,12 @@ struct PPTXReader {
     let package: OPCPackage
     let options: ReadOptions
     let warnings = WarningCollector()
-    init(_ data: Data, options: ReadOptions) throws { self.data = data; self.options = options; self.package = try OPCPackage(data, limits: options.limits) }
+    init(_ data: Data, options: ReadOptions, package: OPCPackage? = nil) throws { self.data = data; self.options = options; self.package = try package ?? OPCPackage(data, limits: options.limits) }
     func tree(_ part: String) throws -> MarkupNode { try MarkupNode.parse(package.archive.read(part), part: part, limits: options.limits) }
-    func warn(_ part: String, _ node: MarkupNode, _ code: SlideWarning.Code = .unsupportedContent, _ message: String = "未対応の要素を原本に保持します") { warnings.add(code, part: part, element: node.name, message: message) }
+    func warn(_ part: String, _ node: MarkupNode, _ code: SlideWarning.Code = .unsupportedContent, _ message: String = "未対応の要素を原本に保持します",
+              feature: FeatureID? = nil, slideID: String? = nil, elementID: String? = nil) {
+        warnings.add(code, part: part, element: node.name, message: message, feature: feature, slideID: slideID, elementID: elementID)
+    }
     func header() throws -> (MarkupNode, Size, [(String,String)], [String: Relationship]) {
         let root = try tree(package.mainPart)
         guard root.isP, root.name == "presentation", let size = root.child("sldSz"), let width = size.attr("cx").flatMap(Double.init), let height = size.attr("cy").flatMap(Double.init), width.isFinite, height.isFinite, width > 0, height > 0 else { throw SlideError.corruptedPackage("不正なpresentationまたはスライド寸法") }
@@ -59,40 +81,50 @@ struct PPTXReader {
         let metadata = try metadata()
         var slides: [Slide] = [], slidePaths: [String:String] = [:], notesPaths: [String:String] = [:]
         for (id,path) in list {
-            let node = try tree(path)
-            guard node.isP, node.name == "sld", let c = node.child("cSld"), let sp = c.child("spTree") else { throw SlideError.corruptedPackage("スライド本体がありません: \(path)") }
-            let rels = try package.relationships(from: path)
-            var ids: Set<String> = []
-            var slide = Slide(id: id, name: c.attr("name") ?? "", elements: try elements(sp, rels: rels, part: path, ids: &ids), background: fill(c.child("bg")?.child("bgPr"), part: path))
-            slide.isHidden = ["0","false"].contains(node.attr("show") ?? "1")
-            slide.layoutPath = rels.values.first { $0.type == "slideLayout" }?.path
-            if let notes = rels.values.first(where: { $0.type == "notesSlide" })?.path {
-                notesPaths[id] = notes
-                if options.includeNotes {
-                    let n = try tree(notes)
-                    guard n.isP, n.name == "notes" else { throw SlideError.corruptedPackage("不正なnotes: \(notes)") }
-                    let paragraphs = try (n.child("cSld")?.child("spTree")?.named("sp") ?? []).filter { shape in
-                        let kind = shape.child("nvSpPr")?.child("nvPr")?.child("ph")?.attr("type")
-                        return kind == "body" || kind == nil
-                    }.flatMap { shape -> [Paragraph] in guard let tx = shape.child("txBody") else { return [] }; return try text(tx, rels: try package.relationships(from: notes), part: notes).paragraphs }
-                    slide.notes = .init(paragraphs: paragraphs)
-                } else { warnings.add(.notesOmitted, part: notes, element: "notes", message: "ノート読み取りを省略しました。保存では元パーツを保持します") }
-            }
-            for child in node.children where !["cSld","clrMapOvr"].contains(child.name) { warn(path, child) }
-            if let bgRef = c.child("bg")?.child("bgRef") { warn(path,bgRef,.uninterpretedFormatting,"テーマ背景参照を保持します。実効色は未解決です") }
+            try Task.checkCancellation()
+            let slide = try readSlide(id:id,path:path)
+            if let notes = try package.relationships(from:path).values.first(where: { $0.type == "notesSlide" })?.path { notesPaths[id] = notes }
             slidePaths[id] = path; slides.append(slide)
         }
         for child in root.children where !["sldIdLst","sldSz","notesSz","sldMasterIdLst","notesMasterIdLst","defaultTextStyle"].contains(child.name) { warn(package.mainPart,child) }
         for part in package.parts {
-            if part.path.hasPrefix("_xmlsignatures/") { warnings.add(.unsupportedPart, part: part.path, element: "signature", message: "署名は検証しません。編集保存は拒否します") }
-            if part.path.hasSuffix("vbaProject.bin") { warnings.add(.macrosPreserved, part: part.path, element: "VBA", message: "マクロを原本のまま保持します。実行しません") }
+            try Task.checkCancellation()
+            if part.path.hasPrefix("_xmlsignatures/") { warnings.add(.unsupportedPart, part: part.path, element: "signature", message: "署名は検証しません。編集保存は拒否します", feature: "SEC-006") }
+            if part.path.hasSuffix("vbaProject.bin") { warnings.add(.macrosPreserved, part: part.path, element: "VBA", message: "マクロを原本のまま保持します。実行しません", feature: "SEC-005") }
             if let type = part.contentType, ["chart","diagram","oleObject","video","audio"].contains(where: { type.localizedCaseInsensitiveContains($0) }) { warnings.add(.unsupportedPart, part: part.path, element: "part", message: "未解釈パーツを保持します") }
         }
         let sourceThemes = try themes()
         var presentation = Presentation(size: size, slides: slides, metadata: metadata)
         let storage = Preservation(data: data, archive: package.archive, mainPart: package.mainPart, limits: options.limits, originalSize: size, originalSlides: slides, originalMetadata: metadata, originalTheme: presentation.theme, slidePaths: slidePaths, notesPaths: notesPaths, notesOmitted: !options.includeNotes)
         presentation.preserve(storage, format: package.format, warnings: warnings.result, parts: package.parts, themes: sourceThemes)
+        try Task.checkCancellation()
         return .init(presentation: presentation)
+    }
+    func readSlide(id: String, path: String) throws -> Slide {
+        let node = try tree(path)
+        guard node.isP, node.name == "sld", let c = node.child("cSld"), let sp = c.child("spTree") else { throw SlideError.corruptedPackage("スライド本体がありません: \(path)") }
+        let rels = try package.relationships(from: path)
+        var ids: Set<String> = []
+        var slide = Slide(id: id, name: c.attr("name") ?? "", elements: try elements(sp, rels: rels, part: path, slideID: id, ids: &ids), background: fill(c.child("bg")?.child("bgPr"), part: path))
+        slide.isHidden = ["0","false"].contains(node.attr("show") ?? "1")
+        slide.layoutPath = rels.values.first { $0.type == "slideLayout" }?.path
+        if let notes = rels.values.first(where: { $0.type == "notesSlide" })?.path {
+            if options.includeNotes {
+                let n = try tree(notes)
+                guard n.isP, n.name == "notes" else { throw SlideError.corruptedPackage("不正なnotes: \(notes)") }
+                let paragraphs = try (n.child("cSld")?.child("spTree")?.named("sp") ?? []).filter { shape in
+                    let kind = shape.child("nvSpPr")?.child("nvPr")?.child("ph")?.attr("type")
+                    return kind == "body" || kind == nil
+                }.flatMap { shape -> [Paragraph] in guard let tx = shape.child("txBody") else { return [] }; return try text(tx, rels: try package.relationships(from: notes), part: notes).paragraphs }
+                slide.notes = .init(paragraphs: paragraphs)
+            } else { warnings.add(.notesOmitted, part: notes, element: "notes", message: "ノート読み取りを省略しました。保存では元パーツを保持します", slideID: id) }
+        }
+        for child in node.children where !["cSld","clrMapOvr"].contains(child.name) {
+            let feature: FeatureID? = child.isP && child.name == "timing" ? "ANI-005" : child.isP && child.name == "transition" ? "ANI-001" : nil
+            warn(path, child, feature: feature, slideID: id)
+        }
+        if let bgRef = c.child("bg")?.child("bgRef") { warn(path,bgRef,.uninterpretedFormatting,"テーマ背景参照を保持します。実効色は未解決です") }
+        return slide
     }
     func themes() throws -> [ThemePart] {
         try package.parts.filter { $0.contentType == "application/vnd.openxmlformats-officedocument.theme+xml" }.map { part in
@@ -111,9 +143,10 @@ struct PPTXReader {
             return ThemePart(path:part.path,name:root.attr("name") ?? "",titleFont:font(elements.child("fontScheme")?.child("majorFont")),bodyFont:font(elements.child("fontScheme")?.child("minorFont")),colors:colors)
         }
     }
-    func elements(_ parent: MarkupNode, rels: [String:Relationship], part: String, ids: inout Set<String>) throws -> [Element] {
+    func elements(_ parent: MarkupNode, rels: [String:Relationship], part: String, slideID: String, ids: inout Set<String>) throws -> [Element] {
         var result: [Element] = []
         for node in parent.children {
+            try Task.checkCancellation()
             if node.isP, ["nvGrpSpPr","grpSpPr"].contains(node.name) { continue }
             let nvName: String
             let kind: Element.Kind
@@ -145,8 +178,8 @@ struct PPTXReader {
                 if let crop = node.child("blipFill")?.child("srcRect") { warn(part,crop,.uninterpretedFormatting,"画像の切り抜きを原本で保持します") }
             }
             if kind == .table, let tbl = node.child("graphic")?.child("graphicData")?.child("tbl") { e.table = try table(tbl, rels: rels, part: part) }
-            if kind == .group { e.children = try elements(node, rels: rels, part: part, ids: &ids); e.childFrame = rect(xfrm, offset: "chOff", extent: "chExt") }
-            if kind == .opaque { e.setRawXML(node.xml); warn(part,node) }
+            if kind == .group { e.children = try elements(node, rels: rels, part: part, slideID: slideID, ids: &ids); e.childFrame = rect(xfrm, offset: "chOff", extent: "chExt") }
+            if kind == .opaque { e.setRawXML(node.xml); warn(part,node,feature: "OBJ-011",slideID: slideID,elementID: id) }
             for child in props?.children ?? [] where !["xfrm","prstGeom","solidFill","noFill","ln"].contains(child.name) { warn(part,child,.uninterpretedFormatting) }
             if let av = props?.child("prstGeom")?.child("avLst"), !av.children.isEmpty { warn(part,av,.uninterpretedFormatting,"図形の調整値を原本で保持します") }
             if let style = node.child("style") { warn(part,style,.uninterpretedFormatting,"テーマ由来の図形書式参照を保持します。実効値は未解決です") }
@@ -258,4 +291,30 @@ struct PPTXReader {
         if let pr = node.child("tblPr"), !pr.attributes.isEmpty { warn(part,pr,.uninterpretedFormatting,"表スタイルの適用フラグを原本で保持します") }
         return .init(columnWidths:widths,rowHeights:heights,rows:rows,styleID:node.child("tblPr")?.child("tableStyleId")?.text)
     }
+}
+
+
+extension PPTXCodec: SlideReadingCodec {
+    public func openSlides(_ data: Data, options: ReadOptions) throws -> any PresentationSlideSource {
+        let reader = try PPTXReader(data,options:options)
+        guard reader.package.format == format else { throw SlideError.unknownFormat }
+        let (_,size,list,_) = try reader.header()
+        return PPTXSlideSource(data:data,package:reader.package,options:options,
+            summary:.init(format:format,size:size,slideCount:list.count,metadata:try reader.metadata(),parts:reader.package.parts),list:list)
+    }
+}
+private struct PPTXSlideSource: PresentationSlideSource {
+    let data: Data
+    let package: OPCPackage
+    let options: ReadOptions
+    let summary: PresentationSummary
+    let list: [(String,String)]
+    var slideDescriptors: [SlideDescriptor] { list.enumerated().map { .init(id:$0.element.0,index:$0.offset) } }
+    func slide(at index: Int) throws -> SlideReadResult {
+        guard list.indices.contains(index) else { throw SlideError.invalidModel("reader index範囲外") }
+        let reader = try PPTXReader(data,options:options,package:package)
+        let slide = try reader.readSlide(id:list[index].0,path:list[index].1)
+        return .init(slide:slide,warnings:reader.warnings.result)
+    }
+    func asset(at path: String) throws -> Data { try package.archive.read(path) }
 }

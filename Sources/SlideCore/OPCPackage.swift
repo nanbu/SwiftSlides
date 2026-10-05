@@ -96,6 +96,10 @@ package struct OPCPackage: Sendable {
 }
 
 extension OPCPackage {
+    /// パーツパスはdecoded、relationship TargetはURI。fragmentは呼出側で保持する。
+    package static func uri(for path: String) -> String {
+        path.addingPercentEncoding(withAllowedCharacters: CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~/"))!
+    }
     package static func relationshipPart(for source: String) -> String {
         if source.isEmpty { return "_rels/.rels" }
         let segments = source.split(separator: "/").map(String.init)

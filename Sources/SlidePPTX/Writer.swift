@@ -12,6 +12,11 @@ final class PPTXWriter {
     let warnings = WarningCollector()
     var counter = 0
     var notesMasterPath: String?
+    var inventory: PackageGraph?
+    func graph(_ storage: Preservation) throws -> PackageGraph {
+        if let inventory { return inventory }
+        let result = try PPTXInventory.build(storage); inventory = result; return result
+    }
     init(_ presentation: Presentation, format: PresentationFormat, options: WriteOptions) { self.presentation = presentation; self.format = format; self.options = options }
     func put(_ path: String, _ xml: String, type: String? = nil) { parts[path] = Data(xml.utf8); unchanged.remove(path); if let type { overrides[path] = type } }
     func unique(_ directory: String, _ suffix: String) -> String {
@@ -19,8 +24,13 @@ final class PPTXWriter {
         return "\(directory)/swiftslides\(counter).\(suffix)"
     }
     func parse(_ path: String) throws -> MarkupNode { guard var data = parts[path] else { throw SlideError.missingPart(path) }; if unchanged.contains(path), let storage = presentation.storage { data = try storage.archive.read(path) }; return try MarkupNode.parse(data, part: path, limits: presentation.storage?.limits ?? .init()) }
-    func warning(_ part: String, _ element: String, _ message: String) { warnings.add(.rewrittenContent,part:part,element:element,message:message) }
+    func warning(_ part: String, _ element: String, _ message: String,
+                 feature: FeatureID? = nil, slideID: String? = nil, elementID: String? = nil) {
+        warnings.add(.rewrittenContent,part:part,element:element,message:message,feature:feature,
+                     slideID:slideID ?? slidePaths.first(where: { $0.value == part })?.key,elementID:elementID)
+    }
     func write() throws -> WriteResult {
+        try Task.checkCancellation()
         try ModelValidation.presentation(presentation)
         if let storage = presentation.storage {
             guard presentation.sourceFormat == format else { throw SlideError.unsafeEdit("既存PPTX/PPTMの形式を変更できません。マクロや関連パーツの削除は明示的な変換が必要です") }
@@ -29,13 +39,89 @@ final class PPTXWriter {
             guard presentation.theme == storage.originalTheme else { throw SlideError.unsafeEdit("既存テーマの書き換えは未対応です") }
             for path in storage.archive.paths where !path.hasSuffix("/") { parts[path] = Data(); unchanged.insert(path) }
             slidePaths = storage.slidePaths
+            try installClones()
             try edit(storage)
         } else {
             guard format == .pptx else { throw SlideError.unsafeEdit("マクロ付き文書の新規作成は未対応です") }
+            try installClones()
             try create()
         }
+        try validateCloneDependencies()
+        try normalizeClonedLayoutIDs()
         if options.strict, !warnings.result.isEmpty { throw SlideError.unsafeEdit("strict保存: \(warnings.result.map(\.message).joined(separator:"; "))") }
         return .init(data:try ZIPWriter.write(parts,compress:options.compress,original:presentation.storage?.archive,unchanged:unchanged),warnings:warnings.result)
+    }
+    func installClones() throws {
+        for (id, clone) in presentation.slideClones.sorted(by: { $0.key < $1.key }) {
+            for (path, data) in clone.parts {
+                if let existing = parts[path], !unchanged.contains(path), existing != data { throw SlideError.unsafeEdit("取り込みpartのパスが衝突しました") }
+                parts[path] = data; unchanged.remove(path)
+            }
+            overrides.merge(clone.contentTypes, uniquingKeysWith: { first, _ in first })
+            slidePaths[id] = clone.slidePath
+        }
+    }
+    func resolveCloneLinks() throws {
+        let retained = Set(presentation.slides.map(\.id))
+        for (id, clone) in presentation.slideClones {
+            for link in clone.links {
+                if retained.contains(id), !retained.contains(link.slideID) { throw SlideError.unsafeEdit("取り込みスライドのリンク先が削除されています") }
+                guard let target = slidePaths[link.slideID] else { throw SlideError.unsafeEdit("取り込みスライドのリンク先がありません") }
+                let rels = try relationships(link.part)
+                guard let node = rels.children.first(where: { $0.attr("Id") == link.relationshipID }) else { throw SlideError.invalidRelationship(part: link.part, detail: "取り込みリンクがありません") }
+                node.set("Target", OPCPackage.uri(for: "/" + target) + link.fragment); saveRelationships(link.part, rels)
+            }
+        }
+    }
+    func validateCloneDependencies() throws {
+        for clone in presentation.slideClones.values {
+            for path in clone.parts.keys where path.hasSuffix(".rels") {
+                let root = try parse(path)
+                guard let source = PPTXInventory.relationshipSource(path) else { throw SlideError.invalidRelationship(part: path, detail: "取り込みrelationshipの位置が不正です") }
+                for rel in root.children where rel.attr("TargetMode") != "External" {
+                    guard let target = rel.attr("Target"), parts[try OPCPackage.resolve(target, from: source)] != nil else {
+                        throw SlideError.invalidRelationship(part: source, detail: "取り込み依存先がありません")
+                    }
+                }
+            }
+        }
+    }
+    func registerClonedMasters(_ main: MarkupNode, rels: MarkupNode, strict: Bool) throws {
+        let masters = overrides.filter { $0.value == "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml" }.keys.sorted()
+        guard !masters.isEmpty else { return }
+        let list: MarkupNode
+        if let existing = main.child("sldMasterIdLst") { list = existing }
+        else { list = try MarkupNode.fragment("<p:sldMasterIdLst/>", strict: strict); main.replace("sldMasterIdLst", with: list, first: true) }
+        var ids = Set(list.children.compactMap { $0.attr("id").flatMap(UInt32.init) })
+        for path in masters {
+            let rid = try addRelationship(rels, type: "slideMaster", target: "/" + path, strict: strict)
+            if list.children.contains(where: { $0.rel("id") == rid }) { continue }
+            var n: UInt32 = 2_147_483_648
+            while ids.contains(n), n < UInt32.max { n += 1 }
+            guard !ids.contains(n) else { throw SlideError.limitExceeded("slide master ID") }
+            ids.insert(n)
+            list.content.append(.node(try MarkupNode.fragment("<p:sldMasterId id=\"\(n)\" r:id=\"\(rid)\"/>", strict: strict)))
+        }
+    }
+    func normalizeClonedLayoutIDs() throws {
+        let cloned = Set(presentation.slideClones.values.flatMap { $0.contentTypes.filter { $0.value.hasSuffix("slideMaster+xml") }.keys })
+        guard !cloned.isEmpty else { return }
+        let masters = Set(presentation.packageParts.filter { $0.contentType?.hasSuffix("slideMaster+xml") == true }.map(\.path))
+            .union(overrides.filter { $0.value.hasSuffix("slideMaster+xml") }.keys)
+        var used = Set<UInt32>()
+        for path in masters.subtracting(cloned) {
+            for node in try parse(path).descendants("sldLayoutId") { if let id = node.attr("id").flatMap(UInt32.init) { used.insert(id) } }
+        }
+        var next: UInt32 = 2_147_483_648
+        for path in cloned.sorted() {
+            let root = try parse(path)
+            for node in root.descendants("sldLayoutId") {
+                while used.contains(next), next < UInt32.max { next += 1 }
+                guard !used.contains(next) else { throw SlideError.limitExceeded("slide layout ID") }
+                node.set("id", String(next)); used.insert(next)
+            }
+            put(path, root.xml)
+        }
     }
     func relationships(_ source: String) throws -> MarkupNode {
         let path = OPCPackage.relationshipPart(for:source)
@@ -43,6 +129,7 @@ final class PPTXWriter {
         return try MarkupNode.parse(Data("<Relationships xmlns=\"\(NS.rels)\"/>".utf8),part:path,limits:.init())
     }
     @discardableResult func addRelationship(_ root: MarkupNode, type: String, target: String, external: Bool = false, strict: Bool = false) throws -> String {
+        let target = external ? target : OPCPackage.uri(for: target)
         let uri = type.hasPrefix("http") ? type : "\(strict ? NS.strictR : NS.r)/\(type)"
         if let existing = root.children.first(where:{ $0.attr("Type") == uri && $0.attr("Target") == target && ($0.attr("TargetMode") == "External") == external }), let id = existing.attr("Id") { return id }
         var n = 1; let used = Set(root.children.compactMap { $0.attr("Id") })
@@ -72,6 +159,7 @@ final class PPTXWriter {
         return try addRelationship(rels,type:"image",target:"/"+path,strict:strict)
     }
     func elementXML(_ e: Element, id: String, rels: MarkupNode, strict: Bool, ids: inout Set<String>) throws -> MarkupNode {
+        try Task.checkCancellation()
         guard e.kind != .opaque, e.rawXML == nil else { throw SlideError.unsafeEdit("未解釈要素は別スライドへコピーできません") }
         guard e.frame != nil else { throw SlideError.invalidModel("新規要素にはframeが必要です") }
         if e.placeholder != nil { throw SlideError.unsafeEdit("新規プレースホルダーの作成は未対応です") }
@@ -121,6 +209,9 @@ final class PPTXWriter {
             if let path = try package.relationships(from:storage.mainPart).values.first(where:{$0.type == "notesMaster"})?.path { return path }
         }
         if let notesMasterPath { return notesMasterPath }
+        if let imported = overrides.keys.sorted().first(where: { overrides[$0] == "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml" }) {
+            notesMasterPath = imported; return imported
+        }
         let path = unique("ppt/notesMasters","xml")
         notesMasterPath = path
         let placeholders = notesPlaceholder(id:2,type:"sldImg",index:2,frame:.init(x:55,y:55,width:430,height:270)) + notesPlaceholder(id:3,type:"body",index:3,frame:.init(x:55,y:345,width:430,height:315)) + notesPlaceholder(id:4,type:"sldNum",index:5,frame:.init(x:430,y:685,width:55,height:25))
@@ -155,8 +246,11 @@ final class PPTXWriter {
         let path = "[Content_Types].xml"
         let root = parts[path] != nil ? try parse(path) : try MarkupNode.parse(Data("<Types xmlns=\"\(NS.types)\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/></Types>".utf8),part:path,limits:.init())
         for (part,type) in overrides.sorted(by:{$0.key < $1.key}) {
-            if let existing = root.children.first(where:{$0.attr("PartName") == "/"+part}) { existing.set("ContentType",type) }
-            else { let n = try MarkupNode.parse(Data("<Override xmlns=\"\(NS.types)\" PartName=\"/\(escapeXML(part))\" ContentType=\"\(escapeXML(type))\"/>".utf8),part:path,limits:.init()); root.content.append(.node(n)) }
+            if let existing = root.children.first(where: { node in
+                guard let value = node.attr("PartName") else { return false }
+                return (try? OPCPackage.resolve(value, from: "")) == part
+            }) { existing.set("ContentType",type) }
+            else { let n = try MarkupNode.parse(Data("<Override xmlns=\"\(NS.types)\" PartName=\"\(escapeXML(OPCPackage.uri(for: "/" + part)))\" ContentType=\"\(escapeXML(type))\"/>".utf8),part:path,limits:.init()); root.content.append(.node(n)) }
         }
         put(path,root.xml)
     }
@@ -169,16 +263,22 @@ final class PPTXWriter {
         put(master,PPTXXML.envelope("sldMaster","<p:cSld><p:spTree>\(PPTXXML.groupHeader())</p:spTree></p:cSld>\(PPTXXML.colorMap)<p:sldLayoutIdLst><p:sldLayoutId id=\"2147483649\" r:id=\"ssrId1\"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles>"),type:"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml")
         let masterRels = try relationships(master); try addRelationship(masterRels,type:"slideLayout",target:"/"+layout); try addRelationship(masterRels,type:"theme",target:"/"+theme); saveRelationships(master,masterRels)
         let mainRels = try relationships(main); let masterID = try addRelationship(mainRels,type:"slideMaster",target:"/"+master)
-        for (i,slide) in presentation.slides.enumerated() { slidePaths[slide.id] = "ppt/slides/slide\(i+1).xml" }
+        for (i,slide) in presentation.slides.enumerated() { slidePaths[slide.id] = presentation.slideClones[slide.id]?.slidePath ?? "ppt/slides/slide\(i+1).xml" }
+        try resolveCloneLinks()
         var list = ""
         for (i,slide) in presentation.slides.enumerated() {
-            let path = slidePaths[slide.id]!; try slideXML(slide,path:path,layout:layout)
+            try Task.checkCancellation()
+            let path = slidePaths[slide.id]!
+            if let clone = presentation.slideClones[slide.id] {
+                if slide != clone.baseline { try patchSlide(slide, original: clone.baseline, path: path, storage: nil, clone: clone) }
+            } else { try slideXML(slide,path:path,layout:layout) }
             let rid = try addRelationship(mainRels,type:"slide",target:"/"+path); list += "<p:sldId id=\"\(256+i)\" r:id=\"\(rid)\"/>"
         }
         // PowerPoint discovers notes masters through relationships. The optional ID list is omitted.
         for path in overrides.keys.sorted() where overrides[path] == "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml" { let rid = try addRelationship(mainRels,type:"notesMaster",target:"/"+path); _ = rid }
         let defaults = (1...9).map { "<a:lvl\($0)pPr><a:defRPr sz=\"1800\"><a:solidFill><a:schemeClr val=\"tx1\"/></a:solidFill><a:latin typeface=\"+mn-lt\"/><a:ea typeface=\"+mn-ea\"/><a:cs typeface=\"+mn-cs\"/></a:defRPr></a:lvl\($0)pPr>" }.joined()
         put(main,PPTXXML.envelope("presentation","<p:sldMasterIdLst><p:sldMasterId id=\"2147483648\" r:id=\"\(masterID)\"/></p:sldMasterIdLst><p:sldIdLst>\(list)</p:sldIdLst><p:sldSz cx=\"\(PPTXXML.emu(presentation.size.width))\" cy=\"\(PPTXXML.emu(presentation.size.height))\"/><p:notesSz cx=\"6858000\" cy=\"9144000\"/><p:defaultTextStyle>\(defaults)</p:defaultTextStyle>"),type:"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml")
+        let mainNode = try parse(main); try registerClonedMasters(mainNode, rels: mainRels, strict: false); put(main, mainNode.xml)
         saveRelationships(main,mainRels)
         put("docProps/core.xml",PPTXXML.core(presentation.metadata),type:"application/vnd.openxmlformats-package.core-properties+xml")
         let rootRels = try relationships(""); try addRelationship(rootRels,type:"officeDocument",target:"/"+main); try addRelationship(rootRels,type:NS.rels+"/metadata/core-properties",target:"/docProps/core.xml"); saveRelationships("",rootRels)
@@ -192,6 +292,10 @@ final class PPTXWriter {
         // Refuse removing slides referenced by another retained part. Do not leave dangling navigation.
         let removedPaths = Set(removed.compactMap { storage.slidePaths[$0] })
         if !removedPaths.isEmpty {
+            let inventory = try graph(storage)
+            if let scope = inventory.unresolvedScopes.first(where: { $0.slideID.map { !removed.contains($0) } ?? true }) {
+                throw SlideError.unsafeEdit("スライド削除に影響する未知参照を判断できません: \(scope.part) \(scope.path)")
+            }
             let package = try OPCPackage(storage.data,limits:storage.limits)
             let ignored = removedPaths.union(removed.compactMap { storage.notesPaths[$0] }).union([storage.mainPart])
             for path in storage.archive.paths where path.hasSuffix(".rels") {
@@ -204,19 +308,25 @@ final class PPTXWriter {
             }
             warnings.add(.orphanedParts,part:storage.mainPart,element:"sldIdLst",message:"削除スライドの未参照パーツを保全のため残します")
         }
-        for slide in presentation.slides where original[slide.id] == nil { slidePaths[slide.id] = unique("ppt/slides","xml"); parts[slidePaths[slide.id]!] = Data() }
+        for slide in presentation.slides where original[slide.id] == nil && presentation.slideClones[slide.id] == nil { slidePaths[slide.id] = unique("ppt/slides","xml"); parts[slidePaths[slide.id]!] = Data() }
+        try resolveCloneLinks()
         var usedIDs = Set(storage.originalSlides.map(\.id)), next: UInt32 = 256, list = ""
         for slide in presentation.slides {
+            try Task.checkCancellation()
             let path = slidePaths[slide.id]!
             let id: String
             if let old = original[slide.id] {
                 id = slide.id
                 if slide != old { try patchSlide(slide,original:old,path:path,storage:storage) }
             } else {
-                guard !strict else { throw SlideError.unsafeEdit("Strict文書へのスライド追加は未対応です") }
-                let layout = slide.layoutPath ?? storage.originalSlides.compactMap(\.layoutPath).first
-                guard let layout, parts[layout] != nil else { throw SlideError.unsafeEdit("追加スライドのレイアウトがありません") }
-                try slideXML(slide,path:path,layout:layout)
+                if let clone = presentation.slideClones[slide.id] {
+                    if slide != clone.baseline { try patchSlide(slide, original: clone.baseline, path: path, storage: storage, clone: clone) }
+                } else {
+                    guard !strict else { throw SlideError.unsafeEdit("Strict文書へのスライド追加は未対応です") }
+                    let layout = slide.layoutPath ?? storage.originalSlides.compactMap(\.layoutPath).first
+                    guard let layout, parts[layout] != nil else { throw SlideError.unsafeEdit("追加スライドのレイアウトがありません") }
+                    try slideXML(slide,path:path,layout:layout)
+                }
                 while usedIDs.contains(String(next)) { next += 1 }; id = String(next); usedIDs.insert(id)
             }
             let rid = try addRelationship(mainRels,type:"slide",target:"/"+path,strict:strict)
@@ -228,6 +338,7 @@ final class PPTXWriter {
         }
         if presentation.size != storage.originalSize, let size = main.child("sldSz") { size.set("cx",PPTXXML.emu(presentation.size.width)); size.set("cy",PPTXXML.emu(presentation.size.height)) }
         // Register one notes master relationship; keep any original optional ID list unchanged.
+        try registerClonedMasters(main, rels: mainRels, strict: strict)
         for path in overrides.keys.sorted() where overrides[path] == "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml" {
             try addRelationship(mainRels,type:"notesMaster",target:"/"+path,strict:strict)
         }
@@ -252,7 +363,7 @@ final class PPTXWriter {
             let root = try relationships(""); try addRelationship(root,type:NS.rels+"/metadata/core-properties",target:"/"+new); saveRelationships("",root)
         }
     }
-    func patchSlide(_ slide: Slide, original: Slide, path: String, storage: Preservation) throws {
+    func patchSlide(_ slide: Slide, original: Slide, path: String, storage: Preservation?, clone: SlideClone? = nil) throws {
         let root = try parse(path), strict = root.namespace == NS.strictP, rels = try relationships(path)
         guard let c = root.child("cSld"), let sp = c.child("spTree") else { throw SlideError.corruptedPackage("スライド構造が不正です") }
         c.set("name",slide.name.isEmpty ? nil : slide.name); root.set("show",slide.isHidden ? "0" : nil)
@@ -263,23 +374,22 @@ final class PPTXWriter {
         }
         func elementIDs(_ elements: [Element]) -> Set<String> { Set(elements.flatMap { [$0.id] + Array(elementIDs($0.children)) }) }
         let removed = elementIDs(original.elements).subtracting(elementIDs(slide.elements))
-        func referencesRemoved(_ node: MarkupNode) -> Bool {
-            if let target = node.attr("spid"), removed.contains(target) { return true }
-            if ["stCxn", "endCxn"].contains(node.name), let target = node.attr("id"), removed.contains(target) { return true }
-            return node.children.contains(where:referencesRemoved)
+        if !removed.isEmpty {
+            if let clone { try PPTXInventory.validateDeletion(clone.graph, part: path, removed: removed) }
+            else if let storage { try PPTXInventory.validateDeletion(graph(storage), part: path, removed: removed) }
+            else { throw SlideError.unsafeEdit("削除参照の原本がありません") }
         }
-        if !removed.isEmpty && referencesRemoved(root) { throw SlideError.unsafeEdit("削除要素をコネクタまたはアニメーションが参照しています") }
         var ids = Set(sp.descendants("cNvPr").compactMap { $0.attr("id") }); ids.insert("1")
         try patchElements(slide.elements,original:original.elements,parent:sp,path:path,rels:rels,strict:strict,ids:&ids)
         if slide.notes != original.notes {
-            if storage.notesOmitted { throw SlideError.unsafeEdit("ノート省略で読んだ文書のノートを編集できません") }
-            if let notePath = storage.notesPaths[slide.id] {
+            if clone?.notesOmitted ?? storage?.notesOmitted ?? false { throw SlideError.unsafeEdit("ノート省略で読んだ文書のノートを編集できません") }
+            if let notePath = clone?.notesPath ?? storage?.notesPaths[slide.id] {
                 let notesRoot = try parse(notePath), notesRels = try relationships(notePath)
                 let bodyShapes = notesRoot.child("cSld")?.child("spTree")?.named("sp").filter { let type = $0.child("nvSpPr")?.child("nvPr")?.child("ph")?.attr("type"); return type == nil || type == "body" } ?? []
                 guard bodyShapes.count == 1, let shape = bodyShapes.first else { throw SlideError.unsafeEdit("複数のノート領域は編集できません") }
                 let xml = try PPTXXML.text(slide.notes ?? TextBody(),relationship:{ try self.linkID($0,rels:notesRels,strict:strict) })
                 shape.replace("txBody",with:try MarkupNode.fragment(xml,strict:strict)); put(notePath,notesRoot.xml); saveRelationships(notePath,notesRels)
-                warning(notePath,"txBody","ノート文字領域を再構成しました")
+                warning(notePath,"txBody","ノート文字領域を再構成しました",slideID:slide.id)
             } else if let notes = slide.notes {
                 guard !strict else { throw SlideError.unsafeEdit("Strict文書へのノート追加は未対応です") }
                 let notePath = try newNotes(notes,slidePath:path); try addRelationship(rels,type:"notesSlide",target:"/"+notePath)
@@ -293,6 +403,7 @@ final class PPTXWriter {
         let old = Dictionary(uniqueKeysWithValues:zip(original,shapeNodes).map { ($0.0.id,($0.0,$0.1)) })
         var nodes: [MarkupNode] = []
         for e in elements {
+            try Task.checkCancellation()
             if let (o,n) = old[e.id] { if e != o { try patchElement(e,original:o,node:n,path:path,rels:rels,strict:strict,ids:&ids) }; nodes.append(n) }
             else { nodes.append(try elementXML(e,id:nextID(&ids),rels:rels,strict:strict,ids:&ids)) }
         }
@@ -336,7 +447,7 @@ final class PPTXWriter {
                     existing.remove(["p"]); existing.content += generated.named("p").map(MarkupNode.Content.node)
                 } else { node.replace("txBody",with:generated) }
             } else { node.replace("txBody",with:generated) }
-            warning(path,"txBody","文字段落を再構成しました。未対応の文字領域内情報は引き継ぎません")
+            warning(path,"txBody","文字段落を再構成しました。未対応の文字領域内情報は引き継ぎません",feature:"TXT-002",elementID:e.id)
         }
         if e.image != o.image {
             guard let image = e.image, let blip = node.child("blipFill")?.child("blip") else { throw SlideError.unsafeEdit("画像の削除または外部参照編集は未対応です") }
@@ -345,7 +456,7 @@ final class PPTXWriter {
         if e.table != o.table {
             guard let t = e.table, let target = node.child("graphic")?.child("graphicData") else { throw SlideError.unsafeEdit("表構造がありません") }
             guard t.rows.allSatisfy({$0.allSatisfy { $0.rowSpan == 1 && $0.columnSpan == 1 && !$0.isMergeContinuation }}) else { throw SlideError.unsafeEdit("結合表の編集保存は未対応です") }
-            target.replace("tbl",with:try MarkupNode.fragment(PPTXXML.table(t,relationship:{ try self.linkID($0,rels:rels,strict:strict) }),strict:strict)); warning(path,"tbl","表を再構成しました。未対応のセル書式は引き継ぎません")
+            target.replace("tbl",with:try MarkupNode.fragment(PPTXXML.table(t,relationship:{ try self.linkID($0,rels:rels,strict:strict) }),strict:strict)); warning(path,"tbl","表を再構成しました。未対応のセル書式は引き継ぎません",feature:"TBL-001",elementID:e.id)
         }
         if e.children != o.children { guard e.kind == .group else { throw SlideError.invalidModel("グループ以外にchildrenを指定できません") }; try patchElements(e.children,original:o.children,parent:node,path:path,rels:rels,strict:strict,ids:&ids) }
     }

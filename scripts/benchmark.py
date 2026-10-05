@@ -6,8 +6,7 @@ root=Path(__file__).resolve().parents[1]
 source=r'''
 import Foundation
 import SwiftSlides
-let mode = CommandLine.arguments[1], url = URL(filePath:CommandLine.arguments[2])
-let clock = ContinuousClock(), start = clock.now
+func measureSync(_ mode: String, url: URL) throws -> Int {
 var bytes = 0
 switch mode {
 case "create":
@@ -28,21 +27,41 @@ case "edit":
     let reread = try Presentation(data:d); precondition(reread.slides[0].elements[0].frame?.x == 21)
 default: fatalError("unknown operation")
 }
+return bytes
+}
+func measureAsyncRead(_ url: URL) async throws -> Int {
+    let result = try await Presentation.read(contentsOf:url)
+    let p = result.presentation
+    precondition(p.slides.count == 100 && p.slides[0].elements.count == 10)
+    return p.plainText.utf8.count
+}
+let mode = CommandLine.arguments[1], url = URL(filePath:CommandLine.arguments[2])
+let clock = ContinuousClock(), start = clock.now
+let bytes: Int
+switch mode {
+case "asyncRead":
+    bytes = try await measureAsyncRead(url)
+case "batch1", "batch4":
+    let results = try await Presentation.readAll(contentsOf:Array(repeating:url,count:12),maxConcurrentReads:mode == "batch1" ? 1 : 4)
+    precondition(results.count == 12 && results.allSatisfy { $0.presentation.slides.count == 100 })
+    bytes = results.reduce(0) { $0 + $1.presentation.plainText.utf8.count }
+default: bytes = try measureSync(mode,url:url)
+}
 let duration=start.duration(to:clock.now).components
 let ms=Double(duration.seconds)*1000+Double(duration.attoseconds)/1e15
 print("{\"milliseconds\":\(ms),\"bytes\":\(bytes)}")
 '''
 with tempfile.TemporaryDirectory(prefix='swiftslides-benchmark-') as folder:
  p=Path(folder);(p/'Sources/Measure').mkdir(parents=True)
- (p/'Package.swift').write_text('// swift-tools-version: 6.2\nimport PackageDescription\nlet package = Package(name:"Measure",platforms:[.macOS(.v14)],dependencies:[.package(path:'+json.dumps(str(root))+')],targets:[.executableTarget(name:"Measure",dependencies:[.product(name:"SwiftSlides",package:"SwiftSlides")])])')
+ (p/'Package.swift').write_text('// swift-tools-version: 6.4\nimport PackageDescription\nlet package = Package(name:"Measure",platforms:[.macOS(.v14)],dependencies:[.package(path:'+json.dumps(str(root))+')],targets:[.executableTarget(name:"Measure",dependencies:[.product(name:"SwiftSlides",package:"SwiftSlides")])],swiftLanguageModes:[.v6])')
  (p/'Sources/Measure/main.swift').write_text(source)
  subprocess.run(['swift','build','-c','release','--package-path',str(p)],check=True,stdout=sys.stderr)
  binary=subprocess.check_output(['swift','build','-c','release','--package-path',str(p),'--show-bin-path'],text=True).strip()+'/Measure'
- result={'platform':platform.platform(),'python':platform.python_version(),'swift':subprocess.check_output(['swift','--version'],text=True).splitlines()[0],'dataset':{'slides':100,'shapesPerSlide':10,'images':0},'runs':5,'operations':{}}
+ result={'platform':platform.platform(),'cpu':subprocess.check_output(['sysctl','-n','machdep.cpu.brand_string'],text=True).strip() if sys.platform=='darwin' else platform.processor(),'python':platform.python_version(),'swift':subprocess.check_output(['swift','--version'],text=True).splitlines(),'dataset':{'slides':100,'shapesPerSlide':10,'images':0,'batchDocuments':12},'runs':5,'operations':{}}
  deck=p/'input.pptx'
  subprocess.run([binary,'create',str(deck)],check=True,stdout=subprocess.DEVNULL)
  result['dataset']['fileBytes']=deck.stat().st_size
- for mode in ['create','read','noop','edit']:
+ for mode in ['create','read','noop','edit','asyncRead','batch1','batch4']:
   samples=[]
   for _ in range(5):
    cmd=['/usr/bin/time','-l'] if sys.platform=='darwin' else ['/usr/bin/time','-f','%M peakRSSKiB']

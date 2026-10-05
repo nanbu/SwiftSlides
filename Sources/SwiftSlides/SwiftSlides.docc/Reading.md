@@ -3,7 +3,7 @@
 ## Overview
 
 `Presentation(contentsOf:)`/`data:`は共通モデルと`readWarnings`を返します。
-`Presentation.read`は`ReadResult`、`inspect`は本文を読まずに寸法・枚数・metadata・partsを返します。
+`Presentation.read`は`ReadResult`、`inspect`は本文モデルを構築せずに寸法・枚数・metadata・partsを返します。
 画像は`asset(at:)`で必要時に展開してCRCを検査します。外部参照は取得しません。
 
 モデルの寸法はポイント、角度は度。グループ内はローカル座標です。
@@ -11,10 +11,37 @@ Font/Color/Strokeは直接指定または生のテーマ参照。sourceThemesに
 レイアウト・マスターの継承と色変換の実効値は計算しません。
 
 `encoded`/`write`は保存bytesと警告、`data`はbytesだけを返します。
-未変更保存は原本bytes。編集保存は変更XMLを再直列化し、未変更パーツの圧縮済payloadを転写します。
+PPTX/PPTMの未変更保存は原本bytes。編集保存は変更XMLを再直列化し、未変更パーツの圧縮済payloadを転写します。
 文字段落や表の再構成は未対応書式を落とす場合があるため警告し、strictは警告のある変更を拒否します。
 PPTMの形式変更、既存テーマ・layout変更、opaque要素編集、署名付き文書の編集は拒否します。
 
 ZIPとXMLの上限は解析量の上限で、プロセスメモリ予算ではありません。
 inspectと未変更パーツ転写は全CRC検証ではありません。展開するパーツでCRCを検査します。
-コーデックは同期的。呼び出し側が実行タスクを選びます。
+Swift 6.4 / Swift 6言語モード。同期codec契約に加え、read / inspect / data / encoded / write / assetのasync overloadを提供します。実処理は`@concurrent`で呼出元Actorから移り、Task localとキャンセルを引き継ぎます。FoundationのファイルI/O自体は同期です。
+
+`readAll(contentsOf:options:maxConcurrentReads:)`はTaskGroupで同時数を制限し、入力順に返します。失敗・親キャンセルで残りをキャンセルし、終了を待ってthrowします。同時数は全体メモリ上限ではありません。
+キャンセルは展開・圧縮chunk、XML callback、スライド・要素境界で確認します。URL保存は一時fileへの分割書込境界とatomic確定直前に確認し、最後の確認後は成功し得ます。同名overloadの追加により、async文脈では既存呼出しにもawaitが必要になる場合があります。
+
+`CodecSet.capabilities(for:)`の未宣言能力はunverified、未登録形式はnoCodecです。`preservationSummary`は原本bytes・パーツ数・現在のopaque要素数・読取時警告を展開なしで返します。詳細依存や変換可否の証明ではありません。
+
+`capabilities.capability(for:operation:profile:)`は機能ID・操作・プロファイルが一致する宣言とfixtureの証拠を返します。StrictとTransitionalは別々に照会し、未掲載はunverifiedです。証拠は回帰テストの定義への参照で、実アプリ互換性の保証ではありません。
+
+`ReadResult.diagnostics`と`WriteResult.diagnostics`はwarningsの構造化投影です。安定コード、read/write段階、処理内容、判明した機能IDと位置、件数を返します。位置のsourceElementはXML名等であり、モデルelementIDとは別です。元のwarningsとstrict保存の規則も維持しています。
+
+
+## ODPと選択reader
+
+ODPは読取専用で、基本文字・図形・画像・表・ノートを投影し原本を保持します。named/masterの継承書式はモデルへ埋めず、SlideODPの書式索引で限定解決します。保存・変換は未提供です。
+
+SlideReaderはsnapshotと不変索引を共有し、要求したスライドをSlideReadResultとして返します。PPTXは本文を選択解析します。ODPは索引作成時のXML全走査が必要です。AsyncSequenceはnext()ごとに1枚読み、先読みはしません。元URLの変更監視とfile-backed ZIPは未提供です。
+
+
+## ID編集と文書単位の検査
+
+editSlide(id:_:) / editElement(id:_:) / editText(_:)は仮の値を編集し、クロージャーの正常終了時だけ反映します。要素検索はgroup内も含みます。対象不在・重複ID・対象ID変更は拒否します。保存可否はwriterで別途検査します。
+
+transaction(options:_:)は複数の編集をwriterで検査し、成功時だけ反映してWriteResultを返します。strictの既定はtrue、ファイル保存は行いません。事前エンコードの時間とメモリが必要です。write/save/transactionの戻り値は警告を確認するか、明示的に`_ =`で破棄します。
+
+Data入口のread/inspectとSlideReaderは明示formatを受けます。CodecSet.formats / contains / codec(for:)で登録を照会し、CodecSet.slideReaderのasync入口では索引構築も呼出元Actorから移します。SlideReader.assetとSavePlanを使うencodedにもasync overloadがあります。
+
+URL保存は明示形式→元形式→PPTXで選び、拡張子によって変換しません。認識できる拡張子が出力形式と違う場合はoutputFormatMismatchで拒否し、保存先を変更しません。

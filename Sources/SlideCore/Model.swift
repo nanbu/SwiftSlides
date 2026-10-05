@@ -297,13 +297,24 @@ public struct Presentation: Sendable {
     public internal(set) var readWarnings: [SlideWarning]
     public internal(set) var packageParts: [PackagePart]
     package var storage: Preservation?
+    package var slideClones: [String: SlideClone] = [:]
     public init(size: Size = .widescreen, slides: [Slide] = [], metadata: Metadata = .init(), theme: Theme = .init()) {
         self.size = size; self.slides = slides; self.metadata = metadata; self.theme = theme; self.sourceThemes = []; self.sourceFormat = nil; self.readWarnings = []; self.packageParts = []; self.storage = nil
     }
     public var plainText: String { slides.map(\.plainText).joined(separator: "\n\n") }
     /// 参照画像や未知パーツのオリジナルbytesを必要時に展開・CRC検査する。
     public func asset(at path: String) throws -> Data {
-        guard let storage else { throw SlideError.missingPart(path) }; return try storage.archive.read(path)
+        try assetSync(at: path)
+    }
+    @concurrent public func asset(at path: String) async throws -> Data { try assetSync(at: path) }
+    private func assetSync(at path: String) throws -> Data {
+        try Task.checkCancellation()
+        for clone in slideClones.values {
+            if let data = clone.parts[path] { return data }
+        }
+        guard let storage else { throw SlideError.missingPart(path) }
+        let data = try storage.archive.read(path)
+        try Task.checkCancellation(); return data
     }
     package mutating func preserve(_ value: Preservation, format: PresentationFormat, warnings: [SlideWarning], parts: [PackagePart], themes: [ThemePart]) { sourceThemes = themes; storage = value; sourceFormat = format; readWarnings = warnings; packageParts = parts }
 }

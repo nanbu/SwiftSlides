@@ -22,8 +22,10 @@ enum ModelValidation {
         if let c = s.color { try color(c) }
     }
     static func text(_ t: TextBody?) throws {
+        try Task.checkCancellation()
         guard let t else { return }; try insets(t.insets)
         for p in t.paragraphs {
+            try Task.checkCancellation()
             if let l = p.style.level, !(0...8).contains(l) { throw SlideError.invalidModel("段落レベルは0〜8です") }
             for n in [p.style.leftMargin,p.style.indent,p.style.spaceBefore,p.style.spaceAfter,p.style.lineSpacing].compactMap({$0}) { try number(n) }
             if let l = p.style.lineSpacing, l <= 0 { throw SlideError.invalidModel("行間は正です") }
@@ -34,6 +36,7 @@ enum ModelValidation {
         }
     }
     static func element(_ e: Element, ids: inout Set<String>, depth: Int) throws {
+        try Task.checkCancellation()
         guard depth < 128, !e.id.isEmpty, ids.insert(e.id).inserted else { throw SlideError.invalidModel("要素IDの重複またはグループが深すぎます") }
         try string(e.name); if let f = e.frame { try rect(f) }; try number(e.rotation); try fill(e.fill); try stroke(e.stroke); try text(e.text)
         if let geometry = e.geometry { guard !geometry.preset.isEmpty, geometry.preset.utf8.allSatisfy({ (65...90).contains($0) || (97...122).contains($0) || (48...57).contains($0) }) else { throw SlideError.invalidModel("図形プリセット名が不正です") } }
@@ -59,6 +62,7 @@ enum ModelValidation {
         for child in e.children { try element(child,ids:&ids,depth:depth+1) }
     }
     static func presentation(_ p: Presentation) throws {
+        try Task.checkCancellation()
         try number(p.size.width); try number(p.size.height); guard p.size.width > 0, p.size.height > 0 else { throw SlideError.invalidModel("スライド寸法は正です") }
         for value in [p.metadata.title,p.metadata.subject,p.metadata.creator,p.metadata.description,p.metadata.keywords].compactMap({$0}) { try string(value) }
         try string(p.theme.name); try style(.init(font:p.theme.titleFont),allowSupplemental:true); try style(.init(font:p.theme.bodyFont),allowSupplemental:true)

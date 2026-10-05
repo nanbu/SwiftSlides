@@ -101,7 +101,7 @@
     "feature": "Strict/ZIP64/変則パーツ名",
     "read": "対応",
     "write": "Strict編集・ZIP32保存",
-    "boundary": "Strictへのスライド追加は拒否",
+    "boundary": "Strict新規slide生成は拒否、原本複製可",
     "test": "readContainers"
   },
   {
@@ -119,10 +119,108 @@
     "test": "legacyAndUnknownRefused"
   },
   {
-    "feature": "ODP・Keynote",
-    "read": "ODPのmimetype検出のみ",
-    "write": "設計のみ",
-    "boundary": "コーデックなし",
-    "test": "odpDetectedButCodecUnavailable"
+    "feature": "ODP読取専用",
+    "read": "ODF 1.3/1.4の基本値・原本保持",
+    "write": "新規・編集・変換を拒否",
+    "boundary": "SlideODP、1.2は未検証、未知要素は診断",
+    "test": "odpBasicReadPreservesOriginalAndSeparatesInheritedValues"
+  },
+  {
+    "feature": "async/await・協調キャンセル",
+    "read": "対応",
+    "write": "atomic確定直前まで確認",
+    "boundary": "@concurrent / CancellationError",
+    "test": "cancellationBeforeReadAndBeforeSavePreservesDestination"
+  },
+  {
+    "feature": "上限付き一括読取",
+    "read": "入力順・TaskGroup",
+    "write": "対象外",
+    "boundary": "同時文書数の上限、全体RSS予算ではない",
+    "test": "boundedBatchPreservesOrderAndLimit"
+  },
+  {
+    "feature": "機能別能力・保持概要",
+    "read": "profile・操作別、fixture証拠付き",
+    "write": "SavePlanで別途判定",
+    "boundary": "FeatureCapability / PreservationSummary",
+    "test": "featureCapabilitiesRequireExactEvidenceScope"
+  },
+  {
+    "feature": "構造化診断",
+    "read": "判明した機能・位置・件数",
+    "write": "書換え診断と既存strict規則",
+    "boundary": "SlideDiagnostic / warnings互換",
+    "test": "readAndWriteDiagnosticsCarryKnownIdentity"
+  },
+  {
+    "feature": "原本の参照inventory",
+    "read": "timing・connector・link・未知参照の位置",
+    "write": "危険な削除を拒否",
+    "boundary": "XML/relationship、非XML内部は未解釈",
+    "test": "inventoryListsLocatedReferencesAndIdentities"
+  },
+  {
+    "feature": "保存計画・変更検知",
+    "read": "source/model/options fingerprint",
+    "write": "事前エンコード・stale拒否・atomic保存",
+    "boundary": "全診断の網羅・遅延file監視なし",
+    "test": "stalePlanRejectsModelSourceAndOptionsBeforeWrite"
+  },
+  {
+    "feature": "スライド複製・取り込み",
+    "read": "notes/chart/workbook/assets/linksを保持",
+    "write": "同寸法・同profile、明示リンク対応表",
+    "boundary": "未知参照・競合notes masterを拒否",
+    "test": "duplicatePreservesNotesChartAssetsAndLocalReferences"
+  },
+  {
+    "feature": "ODP書式索引",
+    "read": "named/automatic/master/directと出典",
+    "write": "未提供",
+    "boundary": "family・scope分離、実効外観は未計算",
+    "test": "odpStylesResolveDirectNamedAutomaticAndMaster"
+  },
+  {
+    "feature": "選択reader",
+    "read": "PPTX本文の選択解析・ODPページ索引",
+    "write": "部分文書の保存APIなし",
+    "boundary": "memory snapshot、全CRC・file監視なし",
+    "test": "selectedReaderSkipsBrokenUnselectedSlideAndSnapshotsURL"
+  },
+  {
+    "feature": "atomic file target",
+    "read": "出力Dataを64KiBずつ書込",
+    "write": "失敗・cancel・ENOSPCで元保存先を保持",
+    "boundary": "エンコード済Data、StreamingWriterは未提供",
+    "test": "atomicFileTargetPreservesDestinationAfterPartialWriteFailureAndCancellation"
+  },
+  {
+    "feature": "IDを指定する編集",
+    "read": "group内もID検索",
+    "write": "正常終了時だけ反映・ID変更を拒否",
+    "boundary": "全書式・保存可否はwriterで検査",
+    "test": "idEditingRefusesMissingAmbiguousAndChangedIdentities"
+  },
+  {
+    "feature": "文書単位のtransaction",
+    "read": "モデルと原本を値として保持",
+    "write": "writer検査後に反映・strict既定",
+    "boundary": "事前エンコードの時間とDataメモリが必要",
+    "test": "transactionFailuresKeepModelAndOriginalSnapshot"
+  },
+  {
+    "feature": "保存形式・拡張子の一致",
+    "read": "内容で形式判定",
+    "write": "認識できる拡張子との不一致を拒否",
+    "boundary": "拡張子から暗黙変換しない",
+    "test": "formatExtensionsAndURLWritesRefuseImplicitConversion"
+  },
+  {
+    "feature": "Keynote",
+    "read": "公開codec未提供、wire限定試作",
+    "write": "試作のみ・同長文字1field",
+    "boundary": "15.4で再包装・局所編集・再保存を確認",
+    "test": "keynoteMarkerIsNotMisidentified"
   }
 ]

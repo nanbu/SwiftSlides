@@ -16,6 +16,7 @@ package struct PackageArchive: Sendable {
     package let paths: [String]
 
     package init(_ data: Data, limits: PackageLimits = .init()) throws {
+        try Task.checkCancellation()
         guard limits.maxEntries > 0, limits.maxExpandedBytes >= 0, limits.maxPartBytes >= 0 else {
             throw SlideError.limitExceeded("limits must be nonnegative")
         }
@@ -53,6 +54,7 @@ package struct PackageArchive: Sendable {
             var p = offset, total = 0
             var entries: [String: Entry] = [:], paths: [String] = [], ranges: [Range<Int>] = []
             for _ in 0..<count {
+                try Task.checkCancellation()
                 guard contains(p, 46), p + 46 <= directoryEnd, u32(p) == 0x02014b50 else { throw fail("invalid ZIP directory entry") }
                 let flags = u16(p + 8), method = u16(p + 10), crc = u32(p + 16)
                 guard flags & 0x0041 == 0 else { throw SlideError.unsupportedContainer("encrypted ZIP") }
@@ -129,11 +131,13 @@ package struct PackageArchive: Sendable {
 
     /// Untouched compressed payload, without inflation. Headers are normalized by the writer.
     package func compressedBytes(_ path: String) throws -> Data {
+        try Task.checkCancellation()
         guard let entry = entries[path] else { throw SlideError.missingPart(path) }
         return data.subdata(in: entry.payload)
     }
 
     package func read(_ path: String) throws -> Data {
+        try Task.checkCancellation()
         guard let entry = entries[path] else { throw SlideError.missingPart(path) }
         let output: Data
         if entry.method == 0 { output = data.subdata(in: entry.payload) }
@@ -143,19 +147,25 @@ package struct PackageArchive: Sendable {
                 guard inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else { throw SlideError.corruptedPackage("inflate initialization") }
                 defer { inflateEnd(&stream) }
                 var expanded = Data(count: entry.expandedSize + 1)
-                let status: Int32 = expanded.withUnsafeMutableBytes { dst in
+                let status: Int32 = try expanded.withUnsafeMutableBytes { dst in
                     stream.next_in = UnsafeMutablePointer(mutating: raw.baseAddress!.advanced(by: entry.payload.lowerBound).assumingMemoryBound(to: UInt8.self))
                     stream.avail_in = uInt(entry.compressedSize)
-                    stream.next_out = dst.baseAddress!.assumingMemoryBound(to: UInt8.self)
-                    stream.avail_out = uInt(dst.count)
-                    return inflate(&stream, Z_FINISH)
+                    while true {
+                        try Task.checkCancellation()
+                        let offset = Int(stream.total_out), previousInput = stream.total_in
+                        guard offset < dst.count else { throw SlideError.corruptedPackage("deflate length mismatch in \(path)") }
+                        stream.next_out = dst.baseAddress!.advanced(by: offset).assumingMemoryBound(to: UInt8.self)
+                        stream.avail_out = uInt(min(64 << 10, dst.count - offset))
+                        let status = inflate(&stream, Z_NO_FLUSH)
+                        if status == Z_STREAM_END { return status }
+                        guard status == Z_OK, stream.total_in != previousInput || stream.total_out != offset else { throw SlideError.corruptedPackage("invalid deflate stream in \(path)") }
+                    }
                 }
                 guard status == Z_STREAM_END, stream.total_out == entry.expandedSize, stream.total_in == entry.compressedSize else { throw SlideError.corruptedPackage("deflate length mismatch in \(path)") }
                 expanded.removeLast(); return expanded
             }
         }
-        let checksum = output.withUnsafeBytes { crc32(0, $0.baseAddress?.assumingMemoryBound(to: UInt8.self), uInt($0.count)) }
-        guard UInt32(checksum) == entry.crc else { throw SlideError.corruptedPackage("CRC mismatch in \(path)") }
+        guard try Checksum.crc(output) == entry.crc else { throw SlideError.corruptedPackage("CRC mismatch in \(path)") }
         return output
     }
 }

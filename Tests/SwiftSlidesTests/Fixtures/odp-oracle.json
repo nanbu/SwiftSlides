@@ -1,0 +1,23 @@
+{
+  "format": "ODF 1.3",
+  "producer": "deterministic fictional fixture",
+  "slides": 2,
+  "size": [
+    960,
+    540
+  ],
+  "title": "Fictional ODP",
+  "text": "Hello  世界\tlink\nEnd",
+  "notes": "Fictional notes",
+  "table": [
+    [
+      "A",
+      "B"
+    ]
+  ],
+  "namedFill": "#123456",
+  "automaticFill": "none",
+  "masterFill": "#102030",
+  "directFontSize": 24,
+  "inheritedFontSize": 18
+}
