@@ -34,7 +34,7 @@ final class PPTXWriter {
         try ModelValidation.presentation(presentation)
         if let storage = presentation.storage {
             guard presentation.sourceFormat == format else { throw SlideError.unsafeEdit("既存PPTX/PPTMの形式を変更できません。マクロや関連パーツの削除は明示的な変換が必要です") }
-            if presentation.size == storage.originalSize, presentation.slides == storage.originalSlides, presentation.metadata == storage.originalMetadata, presentation.theme == storage.originalTheme { return .init(data:storage.data) }
+            if presentation.size == storage.originalSize, presentation.slides == storage.originalSlides, presentation.metadata == storage.originalMetadata, presentation.theme == storage.originalTheme, presentation.firstSlideNumber == storage.originalFirstSlideNumber { return .init(data:storage.data) }
             guard !storage.archive.paths.contains(where:{ $0.hasPrefix("_xmlsignatures/") }) else { throw SlideError.unsafeEdit("署名付き文書は編集保存できません") }
             guard presentation.theme == storage.originalTheme else { throw SlideError.unsafeEdit("既存テーマの書き換えは未対応です") }
             for path in storage.archive.paths where !path.hasSuffix("/") { parts[path] = Data(); unchanged.insert(path) }
@@ -164,10 +164,11 @@ final class PPTXWriter {
         guard e.frame != nil else { throw SlideError.invalidModel("新規要素にはframeが必要です") }
         if e.placeholder != nil { throw SlideError.unsafeEdit("新規プレースホルダーの作成は未対応です") }
         if let g = e.geometry, !PPTXXML.validPresets.contains(g.preset) { throw SlideError.invalidModel("未知の図形プリセット: \(g.preset)") }
+        guard e.customGeometry == nil, e.effects == nil, e.chart == nil, e.diagram == nil else { throw SlideError.unsafeEdit("読取専用のgeometry・効果・chart・diagramを新規保存できません") }
         let cnv = "<p:cNvPr id=\"\(id)\" name=\"\(escapeXML(e.name.isEmpty ? "Shape \(id)" : e.name))\"\(e.image.map { " descr=\"\(escapeXML($0.alternativeText))\"" } ?? "")/>"
         let text: String = try e.text.map { try PPTXXML.text($0,relationship:{ try self.linkID($0,rels:rels,strict:strict) }) } ?? ""
         let geometry = e.geometry.map { "<a:prstGeom prst=\"\(escapeXML($0.preset))\"><a:avLst/></a:prstGeom>" } ?? "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>"
-        let properties = PPTXXML.transform(e) + geometry + PPTXXML.fill(e.fill ?? Fill.none) + PPTXXML.line(e.stroke)
+        let properties = try PPTXXML.transform(e) + geometry + PPTXXML.fill(e.fill ?? Fill.none) + PPTXXML.line(e.stroke)
         let xml: String
         switch e.kind {
         case .shape:
@@ -192,11 +193,12 @@ final class PPTXWriter {
     }
     func nextID(_ ids: inout Set<String>) -> String { var n = 2; while ids.contains(String(n)) { n += 1 }; let id = String(n); ids.insert(id); return id }
     func slideXML(_ slide: Slide, path: String, layout: String) throws {
+        guard slide.showMasterShapes == nil, slide.colorMapOverride == nil, slide.usesMasterColorMapping == nil, slide.backgroundReference == nil, slide.themeOverridePath == nil else { throw SlideError.unsafeEdit("継承投影を持つスライドの新規保存は未対応です") }
         let rels = try relationships(path)
         try addRelationship(rels,type:"slideLayout",target:"/"+layout)
         var ids: Set<String> = ["1"], elements = ""
         for e in slide.elements { elements += try elementXML(e,id:nextID(&ids),rels:rels,strict:false,ids:&ids).xml }
-        let bg = slide.background.map { "<p:bg><p:bgPr>\(PPTXXML.fill($0))<a:effectLst/></p:bgPr></p:bg>" } ?? ""
+        let bg = try slide.background.map { "<p:bg><p:bgPr>\(try PPTXXML.fill($0))<a:effectLst/></p:bgPr></p:bg>" } ?? ""
         put(path,PPTXXML.envelope("sld","<p:cSld name=\"\(escapeXML(slide.name))\">\(bg)<p:spTree>\(PPTXXML.groupHeader())\(elements)</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>"),type:"application/vnd.openxmlformats-officedocument.presentationml.slide+xml")
         if slide.isHidden { let root = try parse(path); root.set("show","0"); put(path,root.xml) }
         if let notes = slide.notes { let note = try newNotes(notes,slidePath:path); try addRelationship(rels,type:"notesSlide",target:"/"+note) }
@@ -278,7 +280,7 @@ final class PPTXWriter {
         for path in overrides.keys.sorted() where overrides[path] == "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml" { let rid = try addRelationship(mainRels,type:"notesMaster",target:"/"+path); _ = rid }
         let defaults = (1...9).map { "<a:lvl\($0)pPr><a:defRPr sz=\"1800\"><a:solidFill><a:schemeClr val=\"tx1\"/></a:solidFill><a:latin typeface=\"+mn-lt\"/><a:ea typeface=\"+mn-ea\"/><a:cs typeface=\"+mn-cs\"/></a:defRPr></a:lvl\($0)pPr>" }.joined()
         put(main,PPTXXML.envelope("presentation","<p:sldMasterIdLst><p:sldMasterId id=\"2147483648\" r:id=\"\(masterID)\"/></p:sldMasterIdLst><p:sldIdLst>\(list)</p:sldIdLst><p:sldSz cx=\"\(PPTXXML.emu(presentation.size.width))\" cy=\"\(PPTXXML.emu(presentation.size.height))\"/><p:notesSz cx=\"6858000\" cy=\"9144000\"/><p:defaultTextStyle>\(defaults)</p:defaultTextStyle>"),type:"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml")
-        let mainNode = try parse(main); try registerClonedMasters(mainNode, rels: mainRels, strict: false); put(main, mainNode.xml)
+        let mainNode = try parse(main); mainNode.set("firstSlideNum",presentation.firstSlideNumber.map(String.init)); try registerClonedMasters(mainNode, rels: mainRels, strict: false); put(main, mainNode.xml)
         saveRelationships(main,mainRels)
         put("docProps/core.xml",PPTXXML.core(presentation.metadata),type:"application/vnd.openxmlformats-package.core-properties+xml")
         let rootRels = try relationships(""); try addRelationship(rootRels,type:"officeDocument",target:"/"+main); try addRelationship(rootRels,type:NS.rels+"/metadata/core-properties",target:"/docProps/core.xml"); saveRelationships("",rootRels)
@@ -337,12 +339,13 @@ final class PPTXWriter {
             mainRels.content.removeAll { item in guard case .node(let n) = item, let target = n.attr("Target"), n.attr("Type")?.hasSuffix("/slide") == true else { return false }; return (try? OPCPackage.resolve(target,from:storage.mainPart)).map { removedPaths.contains($0) } ?? false }
         }
         if presentation.size != storage.originalSize, let size = main.child("sldSz") { size.set("cx",PPTXXML.emu(presentation.size.width)); size.set("cy",PPTXXML.emu(presentation.size.height)) }
+        main.set("firstSlideNum",presentation.firstSlideNumber.map(String.init))
         // Register one notes master relationship; keep any original optional ID list unchanged.
         try registerClonedMasters(main, rels: mainRels, strict: strict)
         for path in overrides.keys.sorted() where overrides[path] == "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml" {
             try addRelationship(mainRels,type:"notesMaster",target:"/"+path,strict:strict)
         }
-        if presentation.slides.map(\.id) != storage.originalSlides.map(\.id) || presentation.size != storage.originalSize || !overrides.isEmpty { put(storage.mainPart,main.xml); saveRelationships(storage.mainPart,mainRels) }
+        if presentation.slides.map(\.id) != storage.originalSlides.map(\.id) || presentation.size != storage.originalSize || !overrides.isEmpty || presentation.firstSlideNumber != storage.originalFirstSlideNumber { put(storage.mainPart,main.xml); saveRelationships(storage.mainPart,mainRels) }
         if presentation.metadata != storage.originalMetadata { try patchMetadata(storage) }
         if !overrides.isEmpty { try contentTypes() }
     }
@@ -367,9 +370,10 @@ final class PPTXWriter {
         let root = try parse(path), strict = root.namespace == NS.strictP, rels = try relationships(path)
         guard let c = root.child("cSld"), let sp = c.child("spTree") else { throw SlideError.corruptedPackage("スライド構造が不正です") }
         c.set("name",slide.name.isEmpty ? nil : slide.name); root.set("show",slide.isHidden ? "0" : nil)
+        guard slide.showMasterShapes == original.showMasterShapes, slide.colorMapOverride == original.colorMapOverride, slide.usesMasterColorMapping == original.usesMasterColorMapping, slide.backgroundReference == original.backgroundReference, slide.themeOverridePath == original.themeOverridePath else { throw SlideError.unsafeEdit("読取専用の継承書式を変更できません") }
         if slide.layoutPath != original.layoutPath { throw SlideError.unsafeEdit("既存スライドのレイアウト変更は未対応です") }
         if slide.background != original.background {
-            c.replace("bg",with:try slide.background.map { try MarkupNode.fragment("<p:bg><p:bgPr>\(PPTXXML.fill($0))<a:effectLst/></p:bgPr></p:bg>",strict:strict) },first:true)
+            c.replace("bg",with:try slide.background.map { try MarkupNode.fragment("<p:bg><p:bgPr>\(try PPTXXML.fill($0))<a:effectLst/></p:bgPr></p:bg>",strict:strict) },first:true)
             if original.background == nil && c.child("bg") != nil { warning(path,"bg","背景の継承参照を新しい塗りへ置換しました") }
         }
         func elementIDs(_ elements: [Element]) -> Set<String> { Set(elements.flatMap { [$0.id] + Array(elementIDs($0.children)) }) }
@@ -412,6 +416,7 @@ final class PPTXWriter {
     }
     func patchElement(_ e: Element, original o: Element, node: MarkupNode, path: String, rels: MarkupNode, strict: Bool, ids: inout Set<String>) throws {
         guard e.kind == o.kind, e.rawXML == o.rawXML, e.placeholder == o.placeholder, e.isTextBox == o.isTextBox else { throw SlideError.unsafeEdit("図形種類・未解釈XML・プレースホルダーの変更は未対応です") }
+        guard e.customGeometry == o.customGeometry, e.effects == o.effects, e.chart == o.chart, e.diagram == o.diagram else { throw SlideError.unsafeEdit("読取専用の投影を変更できません") }
         if e.kind == .opaque { throw SlideError.unsafeEdit("未解釈要素は編集できません") }
         let nv = node.children.first { $0.name.hasPrefix("nv") && $0.isP }
         if e.name != o.name { nv?.child("cNvPr")?.set("name",e.name) }
@@ -424,6 +429,7 @@ final class PPTXWriter {
             else { target.replace("xfrm",with:try MarkupNode.fragment(PPTXXML.transform(e,p:e.kind == .table),strict:strict),first:true) }
         }
         if e.geometry != o.geometry {
+            guard o.customGeometry == nil else { throw SlideError.unsafeEdit("自由曲線をプリセットへ置換できません") }
             if let g = e.geometry, !PPTXXML.validPresets.contains(g.preset) { throw SlideError.invalidModel("未知の図形プリセット: \(g.preset)") }
             guard e.kind == .shape || e.kind == .connector else { throw SlideError.unsafeEdit("この要素のgeometry変更は未対応です") }
             props?.remove(["prstGeom","custGeom"])
@@ -440,12 +446,13 @@ final class PPTXWriter {
             }.map(\.element)
         }
         if e.text != o.text {
-            let generated = try e.text.map { try MarkupNode.fragment(PPTXXML.text($0,relationship:{ try self.linkID($0,rels:rels,strict:strict) }),strict:strict) }
+            guard e.text?.listStyle == o.text?.listStyle else { throw SlideError.unsafeEdit("リスト既定書式の編集は未対応です") }
+            let generated = try e.text.map { value in var value = value; value.listStyle = nil; return try MarkupNode.fragment(PPTXXML.text(value,relationship:{ try self.linkID($0,rels:rels,strict:strict) }),strict:strict) }
             if let existing = node.child("txBody"), let generated, let before = o.text, let after = e.text {
                 // Preserve bodyPr and lstStyle exactly when only the paragraphs changed.
                 if before.insets == after.insets, before.verticalAlignment == after.verticalAlignment, before.wrap == after.wrap {
                     existing.remove(["p"]); existing.content += generated.named("p").map(MarkupNode.Content.node)
-                } else { node.replace("txBody",with:generated) }
+                } else { if let list = existing.child("lstStyle") { generated.replace("lstStyle",with:list) }; node.replace("txBody",with:generated) }
             } else { node.replace("txBody",with:generated) }
             warning(path,"txBody","文字段落を再構成しました。未対応の文字領域内情報は引き継ぎません",feature:"TXT-002",elementID:e.id)
         }

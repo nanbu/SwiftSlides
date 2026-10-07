@@ -45,9 +45,11 @@ struct PPTXReader {
     let data: Data
     let package: OPCPackage
     let options: ReadOptions
+    let extraParts: [String: Data]
+    let extraTypes: [String: String]
     let warnings = WarningCollector()
-    init(_ data: Data, options: ReadOptions, package: OPCPackage? = nil) throws { self.data = data; self.options = options; self.package = try package ?? OPCPackage(data, limits: options.limits) }
-    func tree(_ part: String) throws -> MarkupNode { try MarkupNode.parse(package.archive.read(part), part: part, limits: options.limits) }
+    init(_ data: Data, options: ReadOptions, package: OPCPackage? = nil, extraParts: [String: Data] = [:], extraTypes: [String: String] = [:]) throws { self.extraParts = extraParts; self.extraTypes = extraTypes; self.data = data; self.options = options; self.package = try package ?? OPCPackage(data, limits: options.limits) }
+    func tree(_ part: String) throws -> MarkupNode { try MarkupNode.parse(extraParts[part] ?? package.archive.read(part), part: part, limits: options.limits) }
     func warn(_ part: String, _ node: MarkupNode, _ code: SlideWarning.Code = .unsupportedContent, _ message: String = "未対応の要素を原本に保持します",
               feature: FeatureID? = nil, slideID: String? = nil, elementID: String? = nil) {
         warnings.add(code, part: part, element: node.name, message: message, feature: feature, slideID: slideID, elementID: elementID)
@@ -55,7 +57,7 @@ struct PPTXReader {
     func header() throws -> (MarkupNode, Size, [(String,String)], [String: Relationship]) {
         let root = try tree(package.mainPart)
         guard root.isP, root.name == "presentation", let size = root.child("sldSz"), let width = size.attr("cx").flatMap(Double.init), let height = size.attr("cy").flatMap(Double.init), width.isFinite, height.isFinite, width > 0, height > 0 else { throw SlideError.corruptedPackage("不正なpresentationまたはスライド寸法") }
-        let rels = try package.relationships(from: package.mainPart)
+        let rels = try relationships(from: package.mainPart)
         var ids: Set<String> = [], paths: Set<String> = [], result: [(String,String)] = []
         for node in root.child("sldIdLst")?.named("sldId") ?? [] {
             guard let id = node.attr("id"), let n = UInt32(id), n >= 256, n < 2_147_483_648, ids.insert(id).inserted,
@@ -65,7 +67,7 @@ struct PPTXReader {
         return (root,.init(width: width / 12_700, height: height / 12_700),result,rels)
     }
     func metadata() throws -> Metadata {
-        let roots = try package.relationships(from: "")
+        let roots = try relationships(from: "")
         guard let part = roots.values.first(where: { $0.type == "core-properties" })?.path else { return .init() }
         let root = try tree(part)
         guard root.namespace == NS.core, root.name == "coreProperties" else { throw SlideError.corruptedPackage("不正なcore metadata") }
@@ -83,7 +85,7 @@ struct PPTXReader {
         for (id,path) in list {
             try Task.checkCancellation()
             let slide = try readSlide(id:id,path:path)
-            if let notes = try package.relationships(from:path).values.first(where: { $0.type == "notesSlide" })?.path { notesPaths[id] = notes }
+            if let notes = try relationships(from:path).values.first(where: { $0.type == "notesSlide" })?.path { notesPaths[id] = notes }
             slidePaths[id] = path; slides.append(slide)
         }
         for child in root.children where !["sldIdLst","sldSz","notesSz","sldMasterIdLst","notesMasterIdLst","defaultTextStyle"].contains(child.name) { warn(package.mainPart,child) }
@@ -95,7 +97,10 @@ struct PPTXReader {
         }
         let sourceThemes = try themes()
         var presentation = Presentation(size: size, slides: slides, metadata: metadata)
-        let storage = Preservation(data: data, archive: package.archive, mainPart: package.mainPart, limits: options.limits, originalSize: size, originalSlides: slides, originalMetadata: metadata, originalTheme: presentation.theme, slidePaths: slidePaths, notesPaths: notesPaths, notesOmitted: !options.includeNotes)
+        if let raw = root.attr("firstSlideNum"), Int(raw) == nil { throw SlideError.corruptedPackage("最初のスライド番号が不正です") }
+        presentation.firstSlideNumber = root.attr("firstSlideNum").flatMap(Int.init)
+        presentation.setDefaultTextStyle(listStyle(root.child("defaultTextStyle"), part: package.mainPart))
+        let storage = Preservation(data: data, archive: package.archive, mainPart: package.mainPart, limits: options.limits, originalSize: size, originalSlides: slides, originalMetadata: metadata, originalTheme: presentation.theme, slidePaths: slidePaths, notesPaths: notesPaths, notesOmitted: !options.includeNotes, originalFirstSlideNumber: presentation.firstSlideNumber)
         presentation.preserve(storage, format: package.format, warnings: warnings.result, parts: package.parts, themes: sourceThemes)
         try Task.checkCancellation()
         return .init(presentation: presentation)
@@ -103,11 +108,16 @@ struct PPTXReader {
     func readSlide(id: String, path: String) throws -> Slide {
         let node = try tree(path)
         guard node.isP, node.name == "sld", let c = node.child("cSld"), let sp = c.child("spTree") else { throw SlideError.corruptedPackage("スライド本体がありません: \(path)") }
-        let rels = try package.relationships(from: path)
+        let rels = try relationships(from: path)
         var ids: Set<String> = []
         var slide = Slide(id: id, name: c.attr("name") ?? "", elements: try elements(sp, rels: rels, part: path, slideID: id, ids: &ids), background: fill(c.child("bg")?.child("bgPr"), part: path))
         slide.isHidden = ["0","false"].contains(node.attr("show") ?? "1")
         slide.layoutPath = rels.values.first { $0.type == "slideLayout" }?.path
+        slide.showMasterShapes = boolean(node.attr("showMasterSp"))
+        slide.colorMapOverride = node.child("clrMapOvr")?.child("overrideClrMapping")?.attributes
+        slide.usesMasterColorMapping = node.child("clrMapOvr").map { $0.child("masterClrMapping") != nil }
+        slide.backgroundReference = styleReference(c.child("bg")?.child("bgRef"), part: path)
+        slide.themeOverridePath = rels.values.first { $0.type == "themeOverride" }?.path
         if let notes = rels.values.first(where: { $0.type == "notesSlide" })?.path {
             if options.includeNotes {
                 let n = try tree(notes)
@@ -115,7 +125,7 @@ struct PPTXReader {
                 let paragraphs = try (n.child("cSld")?.child("spTree")?.named("sp") ?? []).filter { shape in
                     let kind = shape.child("nvSpPr")?.child("nvPr")?.child("ph")?.attr("type")
                     return kind == "body" || kind == nil
-                }.flatMap { shape -> [Paragraph] in guard let tx = shape.child("txBody") else { return [] }; return try text(tx, rels: try package.relationships(from: notes), part: notes).paragraphs }
+                }.flatMap { shape -> [Paragraph] in guard let tx = shape.child("txBody") else { return [] }; return try text(tx, rels: try relationships(from: notes), part: notes).paragraphs }
                 slide.notes = .init(paragraphs: paragraphs)
             } else { warnings.add(.notesOmitted, part: notes, element: "notes", message: "ノート読み取りを省略しました。保存では元パーツを保持します", slideID: id) }
         }
@@ -127,9 +137,10 @@ struct PPTXReader {
         return slide
     }
     func themes() throws -> [ThemePart] {
-        try package.parts.filter { $0.contentType == "application/vnd.openxmlformats-officedocument.theme+xml" }.map { part in
+        try package.parts.filter { ["application/vnd.openxmlformats-officedocument.theme+xml", "application/vnd.openxmlformats-officedocument.themeOverride+xml"].contains($0.contentType ?? "") }.map { part in
             let root = try tree(part.path)
-            guard root.isA, root.name == "theme", let elements = root.child("themeElements") else { throw SlideError.corruptedPackage("不正なテーマ") }
+            let isOverride = root.name == "themeOverride"
+            guard root.isA, root.name == "theme" || isOverride, let elements = isOverride ? root : root.child("themeElements") else { throw SlideError.corruptedPackage("不正なテーマ") }
             func font(_ node: MarkupNode?) -> Font {
                 var supplemental: [String:String] = [:]
                 for f in node?.named("font") ?? [] { if let script = f.attr("script"), let face = f.attr("typeface") { supplemental[script] = face } }
@@ -137,13 +148,12 @@ struct PPTXReader {
             }
             var colors: [String:Color] = [:]
             for slot in elements.child("clrScheme")?.children ?? [] {
-                if let sys = slot.child("sysClr"), let fallback = sys.attr("lastClr") { colors[slot.name] = .rgb(fallback); warn(part.path,sys,.uninterpretedFormatting,"システム色はlastClrの代替値です") }
-                else if let c = color(slot,part:part.path) { colors[slot.name] = c }
+                if let c = color(slot,part:part.path) { colors[slot.name] = c }
             }
-            return ThemePart(path:part.path,name:root.attr("name") ?? "",titleFont:font(elements.child("fontScheme")?.child("majorFont")),bodyFont:font(elements.child("fontScheme")?.child("minorFont")),colors:colors)
+            return ThemePart(path:part.path,name:root.attr("name") ?? "",titleFont:font(elements.child("fontScheme")?.child("majorFont")),bodyFont:font(elements.child("fontScheme")?.child("minorFont")),colors:colors,effectStyles:elements.child("fmtScheme")?.child("effectStyleLst")?.named("effectStyle").map { effects($0,style:nil,part:part.path) ?? .init(direct: []) },isOverride:isOverride)
         }
     }
-    func elements(_ parent: MarkupNode, rels: [String:Relationship], part: String, slideID: String, ids: inout Set<String>) throws -> [Element] {
+    func elements(_ parent: MarkupNode, rels: [String:Relationship], part: String, slideID: String?, ids: inout Set<String>) throws -> [Element] {
         var result: [Element] = []
         for node in parent.children {
             try Task.checkCancellation()
@@ -165,6 +175,8 @@ struct PPTXReader {
             let props = node.child(kind == .group ? "grpSpPr" : "spPr")
             let xfrm = props?.child("xfrm") ?? node.child("xfrm")
             var e = Element(id: id, name: cnv?.attr("name") ?? "", kind: kind, frame: rect(xfrm), geometry: props?.child("prstGeom").flatMap { $0.attr("prst") }.map { ShapeGeometry($0) }, fill: fill(props, part: part), stroke: stroke(props?.child("ln"), part: part))
+            e.customGeometry = try customGeometry(props?.child("custGeom"), part: part)
+            e.effects = effects(props,style:node.child("style"),part:part)
             e.isTextBox = on(node.child("nvSpPr")?.child("cNvSpPr")?.attr("txBox"))
             e.rotation = (xfrm?.attr("rot").flatMap(Double.init) ?? 0) / 60_000
             e.flipHorizontal = on(xfrm?.attr("flipH")); e.flipVertical = on(xfrm?.attr("flipV"))
@@ -172,15 +184,19 @@ struct PPTXReader {
             if let body = node.child("txBody") { e.text = try text(body, rels: rels, part: part) }
             if kind == .image {
                 guard let blip = node.child("blipFill")?.child("blip") else { throw SlideError.corruptedPackage("画像参照がありません") }
-                if let embed = blip.rel("embed"), let imageRel = rels[embed], imageRel.type == "image", let path = imageRel.path { e.image = .init(path: path, contentType: package.type(of: path), alternativeText: cnv?.attr("descr") ?? "") }
+                if let embed = blip.rel("embed"), let imageRel = rels[embed], imageRel.type == "image", let path = imageRel.path { e.image = .init(path: path, contentType: extraTypes[path] ?? package.type(of: path), alternativeText: cnv?.attr("descr") ?? "") }
                 else if let link = blip.rel("link"), let rel = rels[link], rel.isExternal { warn(part, blip, .unsupportedContent, "外部画像の参照を保持し、取得しません") }
                 else { throw SlideError.corruptedPackage("画像relationshipが不正です") }
                 if let crop = node.child("blipFill")?.child("srcRect") { warn(part,crop,.uninterpretedFormatting,"画像の切り抜きを原本で保持します") }
             }
             if kind == .table, let tbl = node.child("graphic")?.child("graphicData")?.child("tbl") { e.table = try table(tbl, rels: rels, part: part) }
             if kind == .group { e.children = try elements(node, rels: rels, part: part, slideID: slideID, ids: &ids); e.childFrame = rect(xfrm, offset: "chOff", extent: "chExt") }
-            if kind == .opaque { e.setRawXML(node.xml); warn(part,node,feature: "OBJ-011",slideID: slideID,elementID: id) }
-            for child in props?.children ?? [] where !["xfrm","prstGeom","solidFill","noFill","ln"].contains(child.name) { warn(part,child,.uninterpretedFormatting) }
+            if kind == .opaque {
+                let graphic = node.child("graphic")?.child("graphicData")
+                e.chart = try chart(graphic, rels: rels, part: part)
+                e.diagram = try diagram(graphic, rels: rels, part: part)
+                e.setRawXML(node.xml); warn(part,node,feature: "OBJ-011",slideID: slideID,elementID: id) }
+            for child in props?.children ?? [] where !["xfrm","prstGeom","custGeom","effectLst","effectDag","solidFill","noFill","ln"].contains(child.name) { warn(part,child,.uninterpretedFormatting) }
             if let av = props?.child("prstGeom")?.child("avLst"), !av.children.isEmpty { warn(part,av,.uninterpretedFormatting,"図形の調整値を原本で保持します") }
             if let style = node.child("style") { warn(part,style,.uninterpretedFormatting,"テーマ由来の図形書式参照を保持します。実効値は未解決です") }
             for child in node.children where ![nvName,"spPr","grpSpPr","txBody","style","blipFill","xfrm","graphic","sp","cxnSp","pic","graphicFrame","grpSp"].contains(child.name) { warn(part,child) }
@@ -196,12 +212,24 @@ struct PPTXReader {
     func boolean(_ value: String?) -> Bool? { value.map { !["0","false","off"].contains($0) } }
     func color(_ node: MarkupNode?, part: String) -> Color? {
         guard let node else { return nil }
-        for c in node.children {
-            if c.isA, let value = c.attr("val"), c.name == "srgbClr" || c.name == "schemeClr" {
-                if !c.children.isEmpty { warn(part,c,.uninterpretedFormatting,"色の変換・透明度を原本で保持します。Colorは変換前の値です") }
-                return c.name == "srgbClr" ? .rgb(value) : .theme(value)
+        for c in node.children where c.isA {
+            let base: ColorBase
+            switch c.name {
+            case "srgbClr": guard let v = c.attr("val") else { warn(part,c,.uninterpretedFormatting); continue }; base = .sRGB(v)
+            case "schemeClr": guard let v = c.attr("val") else { warn(part,c,.uninterpretedFormatting); continue }; base = .scheme(v)
+            case "sysClr": base = .system(name:c.attr("val") ?? "",fallback:c.attr("lastClr"))
+            case "prstClr": base = .preset(c.attr("val") ?? "")
+            case "scrgbClr":
+                guard let r = percentage(c.attr("r")), let g = percentage(c.attr("g")), let b = percentage(c.attr("b")) else { warn(part,c,.uninterpretedFormatting); continue }; base = .scRGB(red:r,green:g,blue:b)
+            case "hslClr":
+                guard let h = c.attr("hue").flatMap(Double.init), let sat = percentage(c.attr("sat")), let lum = percentage(c.attr("lum")) else { warn(part,c,.uninterpretedFormatting); continue }; base = .hsl(hue:h / 60_000,saturation:sat,luminance:lum)
+            default: warn(part,c,.uninterpretedFormatting,"未解決の色を原本で保持します"); continue
             }
-            warn(part,c,.uninterpretedFormatting,"未解決の色を原本に保持します")
+            switch base { case .system, .scRGB, .hsl, .preset: warn(part,c,.uninterpretedFormatting,"この基本色の実効値計算は未対応です",feature:"PNT-001"); default: break }
+            if c.children.isEmpty { switch base { case .sRGB(let s): return .rgb(s); case .scheme(let s): return .theme(s); default: break } }
+            let transforms = c.children.map { ColorTransform(name:$0.name,value:$0.attr("val"),namespace:$0.namespace) }
+            if transforms.contains(where: { !["alpha","alphaMod","alphaOff"].contains($0.name) || !$0.namespace.contains("drawingml") }) { warn(part,c,.uninterpretedFormatting,"未対応の色変換を順番付きで保持します",feature:"PNT-002") }
+            return .value(.init(base:base,transforms:transforms))
         }
         return nil
     }
@@ -233,16 +261,12 @@ struct PPTXReader {
         var paragraphs: [Paragraph] = []
         let body = node.child("bodyPr")
         for p in node.named("p") {
+            try Task.checkCancellation()
             let pr = p.child("pPr")
-            func spacing(_ name: String) -> Double? { pr?.child(name)?.child("spcPts")?.attr("val").flatMap(Double.init).map { $0 / 100 } }
-            var ps = ParagraphStyle(alignment: pr?.attr("algn").flatMap(TextAlignment.init), level: pr?.attr("lvl").flatMap(Int.init), leftMargin: pr?.attr("marL").flatMap(Double.init).map { $0/12_700 }, indent: pr?.attr("indent").flatMap(Double.init).map { $0/12_700 }, spaceBefore: spacing("spcBef"), spaceAfter: spacing("spcAft"), lineSpacing: pr?.child("lnSpc")?.child("spcPct")?.attr("val").flatMap(Double.init).map { $0 / 100_000 })
-            if pr?.child("buNone") != nil { ps.bullet = Bullet.none }
-            else if let b = pr?.child("buChar")?.attr("char") { ps.bullet = .character(b) }
-            else if let b = pr?.child("buAutoNum"), let type = b.attr("type") { ps.bullet = .numbered(type,start: b.attr("startAt").flatMap(Int.init) ?? 1) }
-            for c in pr?.children ?? [] where !["defRPr","lnSpc","spcBef","spcAft","buNone","buChar","buAutoNum"].contains(c.name) { warn(part,c,.uninterpretedFormatting) }
-            if let pr { for key in pr.attributes.keys where !["algn","lvl","marL","indent"].contains(key) { warnings.add(.uninterpretedFormatting, part: part, element: key, message: "段落属性を原本に保持します") } }
+            let ps = paragraphStyle(pr, part: part)
             var runs: [TextRun] = []
             for child in p.children {
+                try Task.checkCancellation()
                 switch child.isA ? child.name : "" {
                 case "r","fld":
                     var run = TextRun(child.child("t")?.text ?? "", style: textStyle(child.child("rPr"), part: part))
@@ -251,7 +275,10 @@ struct PPTXReader {
                         if rel.isExternal { run.link = .external(rel.target) } else if rel.type == "slide", let path = rel.path { run.link = .slide(path) } else { warn(part,link) }
                     }
                     runs.append(run)
-                    if child.name == "fld" { warn(part,child,.unsupportedContent,"フィールドは表示値だけを読み、再計算しません") }
+                    if child.name == "fld" {
+                        runs[runs.count - 1].field = .init(id: child.attr("id") ?? "", type: child.attr("type") ?? "", cachedText: run.text, paragraphStyle: child.child("pPr").map { styleLevel($0, part: part) })
+                        if let field = runs.last?.field, UUID(uuidString:field.id.trimmingCharacters(in:CharacterSet(charactersIn:"{}"))) == nil || !TextFieldEvaluator.supportedTypes.contains(field.type) { warn(part,child,.unsupportedContent,"不正または未対応のフィールドをキャッシュ付きで保持します",feature:"TXT-020") }
+                    }
                 case "br": runs.append(.init("\n",style: textStyle(child.child("rPr"),part:part)))
                 case "pPr","endParaRPr": break
                 default: warn(part,child)
@@ -265,8 +292,7 @@ struct PPTXReader {
             insets = Insets(top:margin("tIns",45_720),left:margin("lIns",91_440),bottom:margin("bIns",45_720),right:margin("rIns",91_440))
         }
         if let body { for key in body.attributes.keys where !["lIns","rIns","tIns","bIns","anchor","wrap"].contains(key) { warnings.add(.uninterpretedFormatting,part:part,element:key,message:"テキスト領域の追加属性を原本で保持します") }; for child in body.children { warn(part,child,.uninterpretedFormatting) } }
-        if let list = node.child("lstStyle"), !list.children.isEmpty { warn(part,list,.uninterpretedFormatting,"リストの既定書式を原本で保持します。継承値は未解決です") }
-        return .init(paragraphs:paragraphs,insets:insets,verticalAlignment:body?.attr("anchor").flatMap(VerticalAlignment.init),wrap:body?.attr("wrap").map { $0 != "none" })
+                return .init(paragraphs:paragraphs,insets:insets,verticalAlignment:body?.attr("anchor").flatMap(VerticalAlignment.init),wrap:body?.attr("wrap").map { $0 != "none" },listStyle:node.child("lstStyle").flatMap { $0.children.isEmpty ? nil : listStyle($0,part:part) })
     }
     func table(_ node: MarkupNode, rels: [String:Relationship], part: String) throws -> Table {
         let widths = node.child("tblGrid")?.named("gridCol").compactMap { $0.attr("w").flatMap(Double.init).map { $0/12_700 } } ?? []

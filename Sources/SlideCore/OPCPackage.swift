@@ -6,6 +6,7 @@ package struct Relationship: Sendable {
     package let target: String
     package let path: String?
     package var isExternal: Bool { path == nil }
+    package init(id: String, type: String, target: String, path: String?) { self.id = id; self.type = type; self.target = target; self.path = path }
 }
 package struct OPCPackage: Sendable {
     package let archive: PackageArchive

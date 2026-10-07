@@ -38,6 +38,7 @@ public struct Insets: Sendable, Equatable, Codable {
 public enum Color: Sendable, Equatable, Codable {
     case rgb(String)
     case theme(String)
+    case value(ColorValue)
     public static let black = Color.rgb("000000")
     public static let white = Color.rgb("FFFFFF")
     public static let blue = Color.rgb("2364AA")
@@ -92,7 +93,8 @@ public struct TextRun: Sendable, Equatable, Codable {
     public var text: String
     public var style: TextStyle
     public var link: Link?
-    public init(_ text: String, style: TextStyle = .init(), link: Link? = nil) { self.text = text; self.style = style; self.link = link }
+    public var field: TextField?
+    public init(_ text: String, style: TextStyle = .init(), link: Link? = nil, field: TextField? = nil) { self.text = text; self.style = style; self.link = link; self.field = field }
 }
 /// 行の揃え位置。
 public enum TextAlignment: String, Sendable, Codable { case left = "l", center = "ctr", right = "r", justified = "just" }
@@ -107,9 +109,12 @@ public struct ParagraphStyle: Sendable, Equatable, Codable {
     public var spaceBefore: Double?
     public var spaceAfter: Double?
     public var lineSpacing: Double?
+    public var lineSpacingValue: TextSpacing?
+    public var spaceBeforeValue: TextSpacing?
+    public var spaceAfterValue: TextSpacing?
     public var bullet: Bullet?
-    public init(alignment: TextAlignment? = nil, level: Int? = nil, leftMargin: Double? = nil, indent: Double? = nil, spaceBefore: Double? = nil, spaceAfter: Double? = nil, lineSpacing: Double? = nil, bullet: Bullet? = nil) {
-        self.alignment = alignment; self.level = level; self.leftMargin = leftMargin; self.indent = indent; self.spaceBefore = spaceBefore; self.spaceAfter = spaceAfter; self.lineSpacing = lineSpacing; self.bullet = bullet
+    public init(alignment: TextAlignment? = nil, level: Int? = nil, leftMargin: Double? = nil, indent: Double? = nil, spaceBefore: Double? = nil, spaceAfter: Double? = nil, lineSpacing: Double? = nil, bullet: Bullet? = nil, lineSpacingValue: TextSpacing? = nil, spaceBeforeValue: TextSpacing? = nil, spaceAfterValue: TextSpacing? = nil) {
+        self.alignment = alignment; self.level = level; self.leftMargin = leftMargin; self.indent = indent; self.spaceBefore = spaceBefore; self.spaceAfter = spaceAfter; self.lineSpacing = lineSpacing; self.bullet = bullet; self.lineSpacingValue = lineSpacingValue; self.spaceBeforeValue = spaceBeforeValue; self.spaceAfterValue = spaceAfterValue
     }
 }
 /// 段落。defaultTextStyleは直接指定の既定run書式。
@@ -131,8 +136,9 @@ public struct TextBody: Sendable, Equatable, Codable {
     public var insets: Insets?
     public var verticalAlignment: VerticalAlignment?
     public var wrap: Bool?
-    public init(paragraphs: [Paragraph] = [], insets: Insets? = nil, verticalAlignment: VerticalAlignment? = nil, wrap: Bool? = nil) {
-        self.paragraphs = paragraphs; self.insets = insets; self.verticalAlignment = verticalAlignment; self.wrap = wrap
+    public var listStyle: TextListStyle?
+    public init(paragraphs: [Paragraph] = [], insets: Insets? = nil, verticalAlignment: VerticalAlignment? = nil, wrap: Bool? = nil, listStyle: TextListStyle? = nil) {
+        self.paragraphs = paragraphs; self.insets = insets; self.verticalAlignment = verticalAlignment; self.wrap = wrap; self.listStyle = listStyle
     }
     public init(_ text: String, style: TextStyle = .init(), alignment: TextAlignment? = nil, insets: Insets? = nil, verticalAlignment: VerticalAlignment? = nil) {
         self.init(paragraphs: text.components(separatedBy: "\n").map { Paragraph($0, style: .init(alignment: alignment), textStyle: style) }, insets: insets, verticalAlignment: verticalAlignment)
@@ -206,6 +212,10 @@ public struct Element: Sendable, Equatable, Codable, Identifiable {
     public var flipHorizontal: Bool
     public var flipVertical: Bool
     public var geometry: ShapeGeometry?
+    public var customGeometry: CustomGeometry?
+    public var effects: ElementEffects?
+    public var chart: Chart?
+    public var diagram: Diagram?
     public var fill: Fill?
     public var stroke: Stroke?
     public var text: TextBody?
@@ -218,7 +228,7 @@ public struct Element: Sendable, Equatable, Codable, Identifiable {
     /// 保存で保全される未解釈XMLの説明用コピー。編集不可。
     public internal(set) var rawXML: String?
     public init(id: String = UUID().uuidString, name: String = "", kind: Kind = .shape, frame: Rect? = nil, geometry: ShapeGeometry? = .rectangle, fill: Fill? = nil, stroke: Stroke? = nil, text: TextBody? = nil, image: Image? = nil, table: Table? = nil, children: [Element] = [], childFrame: Rect? = nil) {
-        self.id = id; self.name = name; self.kind = kind; self.isTextBox = false; self.frame = frame; self.rotation = 0; self.flipHorizontal = false; self.flipVertical = false; self.geometry = geometry; self.fill = fill; self.stroke = stroke; self.text = text; self.image = image; self.table = table; self.children = children; self.childFrame = childFrame; self.placeholder = nil; self.rawXML = nil
+        self.id = id; self.name = name; self.kind = kind; self.isTextBox = false; self.frame = frame; self.rotation = 0; self.flipHorizontal = false; self.flipVertical = false; self.geometry = geometry; self.fill = fill; self.stroke = stroke; self.text = text; self.image = image; self.table = table; self.children = children; self.childFrame = childFrame; self.placeholder = nil; self.rawXML = nil; self.customGeometry = nil; self.effects = nil; self.chart = nil; self.diagram = nil
     }
     public var plainText: String { text?.plainText ?? table?.plainText ?? children.map(\.plainText).filter { !$0.isEmpty }.joined(separator: "\n") }
     package mutating func setRawXML(_ value: String) { rawXML = value }
@@ -233,8 +243,13 @@ public struct Slide: Sendable, Equatable, Codable, Identifiable {
     public var notes: TextBody?
     /// 読み取ったレイアウトへのパッケージ参照。
     public var layoutPath: String?
+    public var showMasterShapes: Bool?
+    public var colorMapOverride: [String: String]?
+    public var usesMasterColorMapping: Bool?
+    public var backgroundReference: StyleReference?
+    public var themeOverridePath: String?
     public init(id: String = UUID().uuidString, name: String = "", elements: [Element] = [], notes: TextBody? = nil, background: Fill? = nil) {
-        self.id = id; self.name = name; self.elements = elements; self.notes = notes; self.background = background; self.isHidden = false; self.layoutPath = nil
+        self.id = id; self.name = name; self.elements = elements; self.notes = notes; self.background = background; self.isHidden = false; self.layoutPath = nil; self.showMasterShapes = nil; self.colorMapOverride = nil; self.usesMasterColorMapping = nil; self.backgroundReference = nil; self.themeOverridePath = nil
     }
     public var plainText: String { elements.map(\.plainText).filter { !$0.isEmpty }.joined(separator: "\n") }
     /// テキストボックスを末尾へ追加し、そのIDを返す。
@@ -273,7 +288,9 @@ public struct ThemePart: Sendable, Equatable, Codable {
     public var titleFont: Font
     public var bodyFont: Font
     public var colors: [String: Color]
-    public init(path: String, name: String, titleFont: Font, bodyFont: Font, colors: [String: Color]) { self.path = path; self.name = name; self.titleFont = titleFont; self.bodyFont = bodyFont; self.colors = colors }
+    public var effectStyles: [ElementEffects]?
+    public var isOverride: Bool?
+    public init(path: String, name: String, titleFont: Font, bodyFont: Font, colors: [String: Color], effectStyles: [ElementEffects]? = nil, isOverride: Bool? = nil) { self.isOverride = isOverride; self.effectStyles = effectStyles; self.path = path; self.name = name; self.titleFont = titleFont; self.bodyFont = bodyFont; self.colors = colors }
 }
 /// 文書プロパティ。日時・作者は指定された値だけを保存する。
 public struct Metadata: Sendable, Equatable, Codable {
@@ -291,6 +308,8 @@ public struct Presentation: Sendable {
     public var metadata: Metadata
     /// 新規文書用テーマ。既存文書のテーマ変更は安全性のため拒否される。
     public var theme: Theme
+    public var firstSlideNumber: Int?
+    public internal(set) var defaultTextStyle: TextListStyle?
     /// パッケージから読み取ったテーマ定義。継承・色変換の解決は行わない。
     public internal(set) var sourceThemes: [ThemePart]
     public internal(set) var sourceFormat: PresentationFormat?
@@ -299,7 +318,7 @@ public struct Presentation: Sendable {
     package var storage: Preservation?
     package var slideClones: [String: SlideClone] = [:]
     public init(size: Size = .widescreen, slides: [Slide] = [], metadata: Metadata = .init(), theme: Theme = .init()) {
-        self.size = size; self.slides = slides; self.metadata = metadata; self.theme = theme; self.sourceThemes = []; self.sourceFormat = nil; self.readWarnings = []; self.packageParts = []; self.storage = nil
+        self.size = size; self.slides = slides; self.metadata = metadata; self.theme = theme; self.firstSlideNumber = nil; self.defaultTextStyle = nil; self.sourceThemes = []; self.sourceFormat = nil; self.readWarnings = []; self.packageParts = []; self.storage = nil
     }
     public var plainText: String { slides.map(\.plainText).joined(separator: "\n\n") }
     /// 参照画像や未知パーツのオリジナルbytesを必要時に展開・CRC検査する。
@@ -316,6 +335,7 @@ public struct Presentation: Sendable {
         let data = try storage.archive.read(path)
         try Task.checkCancellation(); return data
     }
+    package mutating func setDefaultTextStyle(_ value: TextListStyle?) { defaultTextStyle = value }
     package mutating func preserve(_ value: Preservation, format: PresentationFormat, warnings: [SlideWarning], parts: [PackagePart], themes: [ThemePart]) { sourceThemes = themes; storage = value; sourceFormat = format; readWarnings = warnings; packageParts = parts }
 }
 /// パッケージパーツの検査情報。expandedSizeは宣言値でありメモリ使用量ではない。
@@ -335,10 +355,11 @@ package struct Preservation: Sendable {
     package let originalSlides: [Slide]
     package let originalMetadata: Metadata
     package let originalTheme: Theme
+    package let originalFirstSlideNumber: Int?
     package let slidePaths: [String: String]
     package let notesPaths: [String: String]
     package let notesOmitted: Bool
-    package init(data: Data, archive: PackageArchive, mainPart: String, limits: PackageLimits, originalSize: Size, originalSlides: [Slide], originalMetadata: Metadata, originalTheme: Theme, slidePaths: [String: String], notesPaths: [String: String], notesOmitted: Bool) {
-        self.data = data; self.archive = archive; self.mainPart = mainPart; self.limits = limits; self.originalSize = originalSize; self.originalSlides = originalSlides; self.originalMetadata = originalMetadata; self.originalTheme = originalTheme; self.slidePaths = slidePaths; self.notesPaths = notesPaths; self.notesOmitted = notesOmitted
+    package init(data: Data, archive: PackageArchive, mainPart: String, limits: PackageLimits, originalSize: Size, originalSlides: [Slide], originalMetadata: Metadata, originalTheme: Theme, slidePaths: [String: String], notesPaths: [String: String], notesOmitted: Bool, originalFirstSlideNumber: Int? = nil) {
+        self.data = data; self.archive = archive; self.mainPart = mainPart; self.limits = limits; self.originalSize = originalSize; self.originalSlides = originalSlides; self.originalMetadata = originalMetadata; self.originalTheme = originalTheme; self.slidePaths = slidePaths; self.notesPaths = notesPaths; self.notesOmitted = notesOmitted; self.originalFirstSlideNumber = originalFirstSlideNumber
     }
 }

@@ -1,4 +1,4 @@
-﻿# 読み取りと保存の契約
+# 読み取りと保存の契約
 
 ## Overview
 
@@ -8,7 +8,7 @@
 
 モデルの寸法はポイント、角度は度。グループ内はローカル座標です。
 Font/Color/Strokeは直接指定または生のテーマ参照。sourceThemesには原本テーマ定義を投影します。
-レイアウト・マスターの継承と色変換の実効値は計算しません。
+レイアウト・マスターの直接値はreadLayout / readMasterで取得でき、継承の自動適用は行いません。ColorValueは順序付き変換を保持し、ColorResolverは透明度系だけを初期解決します。
 
 `encoded`/`write`は保存bytesと警告、`data`はbytesだけを返します。
 PPTX/PPTMの未変更保存は原本bytes。編集保存は変更XMLを再直列化し、未変更パーツの圧縮済payloadを転写します。
@@ -45,3 +45,14 @@ transaction(options:_:)は複数の編集をwriterで検査し、成功時だけ
 Data入口のread/inspectとSlideReaderは明示formatを受けます。CodecSet.formats / contains / codec(for:)で登録を照会し、CodecSet.slideReaderのasync入口では索引構築も呼出元Actorから移します。SlideReader.assetとSavePlanを使うencodedにもasync overloadがあります。
 
 URL保存は明示形式→元形式→PPTXで選び、拡張子によって変換しません。認識できる拡張子が出力形式と違う場合はoutputFormatMismatchで拒否し、保存先を変更しません。
+
+
+## 表示用の直接値
+
+TextSpacingはpointsとpercentage（100%=1）を区別します。ParagraphStyleのeffectiveLineSpacing / effectiveSpaceBefore / effectiveSpaceAfterは新しい単位付き属性を旧Double属性より優先します。overlaying(_:)は指定属性だけを単位ごと上書きし、0を未指定へ変えません。TextBody.listStyle、Presentation.defaultTextStyle、masterのtextStylesは継承前の直接値です。
+
+TextRun.fieldはID/type/cacheとfield内の段落書式を保持します。TextFieldEvaluatorは明示された日時・locale・timeZone・slideNumberから評価し、未知typeや特殊暦はキャッシュと診断を返します。評価は原本を変更しません。保存する更新ではrun.textとfield.cachedTextを合わせます。firstSlideNumberとslideNumber(for:)は非表示も含む現在の文書順を使います。
+
+Color.value、Element.customGeometry / effects / chart / diagramは原本の追加投影です。未対応の色変換・guide・arc・高度な効果は保持と診断を優先します。chartの点列は疎なindex付きで、欠落値を0へ変えません。diagramは保存済みdrawingとデータ文字を返し、自動配置しません。chartとdiagramのkindはopaqueを維持します。
+
+新しい投影を変更した保存と新規生成は拒否します。自由曲線や影を持つ既存要素の位置編集では原本XMLを維持します。master/layout読取には同期・async入口があり、原本と取り込み済みパーツを読みます。element IDはpart pathと組にして識別します。描画順・showMasterSp・色map・themeOverrideの適用と文字測定は呼出側の責務です。

@@ -25,6 +25,15 @@ let count = try p.editSlide(id: "slide") { slide in
     }
 }
 precondition(count == 1 && p.plainText == "after")
+let spacing = ParagraphStyle(lineSpacingValue: .points(18)).overlaying(.init(lineSpacingValue: .percentage(0)))
+precondition(spacing.effectiveLineSpacing == .percentage(0))
+let field = TextField(id: "{11111111-1111-1111-1111-111111111111}", type: "slidenum", cachedText: "1")
+let context = TextFieldContext(slideNumber: 2, date: Date(timeIntervalSince1970: 0), localeIdentifier: "en_US_POSIX", timeZoneIdentifier: "UTC")
+precondition(TextFieldEvaluator.evaluate(field, context: context).text == "2")
+let alpha = Color.value(.init(base: .sRGB("FFFFFF"), transforms: [.init(name: "alpha", value: "50000")]))
+precondition(ColorResolver.resolve(alpha).color?.alpha == 0.5)
+var shape = Element(); shape.customGeometry = CustomGeometry(paths: [.init(commands: [.move(.init(x: "0", y: "0")), .close])])
+shape.effects = ElementEffects(direct: [.outerShadow(.init(distance: 2))])
 '''
 
 PPTX = '''
@@ -37,6 +46,10 @@ let result = try codecs.transaction(&p) { $0.metadata.title = "committed" }
 precondition(result.warnings.isEmpty)
 let read = try codecs.read(result.data, format: .pptx)
 precondition(read.presentation.metadata.title == "committed")
+let layout = try read.presentation.readLayout(at: read.presentation.slides[0].layoutPath!)
+let master = try read.presentation.readMaster(at: layout.layout.masterPath!)
+precondition(master.master.themePath != nil)
+precondition(try read.presentation.slideNumber(for: read.presentation.slides[0].id) == 1)
 precondition(try codecs.inspect(result.data, format: .pptx).slideCount == 1)
 let reader = try codecs.slideReader(result.data, format: .pptx)
 precondition(try reader.slide(id: reader.slideDescriptors[0].id).slide.plainText == "consumer")

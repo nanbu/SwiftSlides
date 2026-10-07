@@ -39,7 +39,7 @@
       "fixture": "python-pptx.pptx",
       "fixtureSHA256": "de176a193e19d3670670e36b2f29c6301ad6d444083e61416d3e631985418d40",
       "test": "opaqueChartIsWarnedAndPreserved",
-      "scope": "棒チャートのgraphicFrameをopaqueとして読み、元XMLと警告を確認。チャートの意味モデルは作らない。"
+      "scope": "棒チャートのgraphicFrameをopaqueとして読み、元XMLと警告を確認。追加されたcache投影の検証は別証拠。"
     },
     {
       "id": "E05",
@@ -260,6 +260,106 @@
       "fixtureSHA256": "1e84faf264b006b6e9a817858c33a35c8d347815b69c699e95c9cfc9b1cf7857",
       "test": "libreOfficeODPProducerIsReadableWithLocatedWarnings",
       "scope": "LibreOffice 26.2.3.2が架空PPTXから生成した2枚のODF 1.4で本文とnotesを照合。custom geometryはopaqueの表示文字投影。外観は未検証。"
+    },
+    {
+      "id": "E27",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "reading-models.pptx",
+      "fixtureSHA256": "101f63e92c97fcf51aad5922d98483a2c6c7c58d7dae78cdec9533082818f9d4",
+      "test": "unitSpacingFieldsAndSourceStyles",
+      "scope": "points/percentage・0・field ID/type/cache/pPr・default/list/masterの直接値。日時localeの完全互換や実効継承を含まない。"
+    },
+    {
+      "id": "E28",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "reading-models.pptx",
+      "fixtureSHA256": "101f63e92c97fcf51aad5922d98483a2c6c7c58d7dae78cdec9533082818f9d4",
+      "test": "colorGeometryAndOuterShadowProjection",
+      "scope": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+    },
+    {
+      "id": "E29",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "reading-models.pptx",
+      "fixtureSHA256": "101f63e92c97fcf51aad5922d98483a2c6c7c58d7dae78cdec9533082818f9d4",
+      "test": "inheritedPartsTablesChartsAndSavedDiagram",
+      "scope": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "id": "E30",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "reading-models.pptx",
+      "fixtureSHA256": "101f63e92c97fcf51aad5922d98483a2c6c7c58d7dae78cdec9533082818f9d4",
+      "test": "fieldAndSpacingEditsKeepRunsAndStrictNamespace",
+      "scope": "既存の単位付き間隔とfieldキャッシュを明示編集し、run境界・listStyle・field pPrの名前空間を再読。未知書式の任意編集を含まない。"
+    },
+    {
+      "id": "E31",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "reading-models.pptx",
+      "fixtureSHA256": "101f63e92c97fcf51aad5922d98483a2c6c7c58d7dae78cdec9533082818f9d4",
+      "test": "projectionPreservesSourceAndRefusesUnsupportedEdits",
+      "scope": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "id": "E32",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "reading-models-strict.pptx",
+      "fixtureSHA256": "10452311bd82b52f83c3106709849673a41e0a2adaeecb0c8676fcec4fc46523",
+      "test": "unitSpacingFieldsAndSourceStyles",
+      "scope": "points/percentage・0・field ID/type/cache/pPr・default/list/masterの直接値。日時localeの完全互換や実効継承を含まない。 Strictは合成名前空間変種でありStrict producerの証拠ではない。"
+    },
+    {
+      "id": "E33",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "reading-models-strict.pptx",
+      "fixtureSHA256": "10452311bd82b52f83c3106709849673a41e0a2adaeecb0c8676fcec4fc46523",
+      "test": "colorGeometryAndOuterShadowProjection",
+      "scope": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。 Strictは合成名前空間変種でありStrict producerの証拠ではない。"
+    },
+    {
+      "id": "E34",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "reading-models-strict.pptx",
+      "fixtureSHA256": "10452311bd82b52f83c3106709849673a41e0a2adaeecb0c8676fcec4fc46523",
+      "test": "inheritedPartsTablesChartsAndSavedDiagram",
+      "scope": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。 Strictは合成名前空間変種でありStrict producerの証拠ではない。"
+    },
+    {
+      "id": "E35",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "edit",
+      "fixture": "reading-models-strict.pptx",
+      "fixtureSHA256": "10452311bd82b52f83c3106709849673a41e0a2adaeecb0c8676fcec4fc46523",
+      "test": "fieldAndSpacingEditsKeepRunsAndStrictNamespace",
+      "scope": "既存の単位付き間隔とfieldキャッシュを明示編集し、run境界・listStyle・field pPrの名前空間を再読。未知書式の任意編集を含まない。 Strictは合成名前空間変種でありStrict producerの証拠ではない。"
+    },
+    {
+      "id": "E36",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "edit",
+      "fixture": "reading-models-strict.pptx",
+      "fixtureSHA256": "10452311bd82b52f83c3106709849673a41e0a2adaeecb0c8676fcec4fc46523",
+      "test": "projectionPreservesSourceAndRefusesUnsupportedEdits",
+      "scope": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。 Strictは合成名前空間変種でありStrict producerの証拠ではない。"
     }
   ],
   "capabilities": [
@@ -356,11 +456,12 @@
       "profile": "ooxmlTransitional",
       "feature": "CHT-001",
       "operation": "read",
-      "status": "preserveOnly",
+      "status": "partial",
       "evidence": [
-        "E04"
+        "E04",
+        "E29"
       ],
-      "notes": "棒チャートfixtureの元XMLを保持。series/axes等の意味は読まない。"
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
     },
     {
       "format": "pptx",
@@ -725,6 +826,369 @@
         "E26"
       ],
       "notes": "LibreOffice生成の指定fixtureで本文・notesを確認。ODF 1.4全要素への対応を意味しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-009",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E27"
+      ],
+      "notes": "points/percentage・0・field ID/type/cache/pPr・default/list/masterの直接値。日時localeの完全互換や実効継承を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-020",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E27"
+      ],
+      "notes": "points/percentage・0・field ID/type/cache/pPr・default/list/masterの直接値。日時localeの完全互換や実効継承を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E28"
+      ],
+      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "GEO-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E28"
+      ],
+      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-009",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E28"
+      ],
+      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "STY-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E29"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E29"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-006",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E29"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E29"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E29"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-009",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E30"
+      ],
+      "notes": "既存の単位付き間隔とfieldキャッシュを明示編集し、run境界・listStyle・field pPrの名前空間を再読。未知書式の任意編集を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-020",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E30"
+      ],
+      "notes": "既存の単位付き間隔とfieldキャッシュを明示編集し、run境界・listStyle・field pPrの名前空間を再読。未知書式の任意編集を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-002",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E31"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "GEO-004",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E31"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-009",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E31"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-004",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E31"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "TXT-009",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E32"
+      ],
+      "notes": "points/percentage・0・field ID/type/cache/pPr・default/list/masterの直接値。日時localeの完全互換や実効継承を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "TXT-020",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E32"
+      ],
+      "notes": "points/percentage・0・field ID/type/cache/pPr・default/list/masterの直接値。日時localeの完全互換や実効継承を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E33"
+      ],
+      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "GEO-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E33"
+      ],
+      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-009",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E33"
+      ],
+      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "STY-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E34"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "CHT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E34"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "CHT-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E34"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "CHT-006",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E34"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "CHT-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E34"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "OBJ-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E34"
+      ],
+      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "TXT-009",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E35"
+      ],
+      "notes": "既存の単位付き間隔とfieldキャッシュを明示編集し、run境界・listStyle・field pPrの名前空間を再読。未知書式の任意編集を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "TXT-020",
+      "operation": "edit",
+      "status": "partial",
+      "evidence": [
+        "E35"
+      ],
+      "notes": "既存の単位付き間隔とfieldキャッシュを明示編集し、run境界・listStyle・field pPrの名前空間を再読。未知書式の任意編集を含まない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-002",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E36"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "GEO-004",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E36"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-009",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E36"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "CHT-004",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E36"
+      ],
+      "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
     }
   ]
 }

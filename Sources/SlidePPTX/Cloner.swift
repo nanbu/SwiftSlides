@@ -113,6 +113,7 @@ enum PPTXCloner {
             let tree = try MarkupNode.parse(package.archive.read(styles), part: styles, limits: storage.limits)
             if !tree.children.isEmpty { throw SlideError.unsafeEdit("独自table styleの取り込みは未対応です") }
         }
+        var renewedFields: [String: [String: String]] = [:]
         var data: [String: Data] = [:], types: [String: String] = [:]
         for part in copied.sorted() {
             let target = mapping[part]!
@@ -122,7 +123,7 @@ enum PPTXCloner {
                 var changed = false
                 func renewMetadata(_ node: MarkupNode) {
                     if PPTXInventory.metadataID(node) { node.set("val", String(UInt32.random(in: 0...UInt32.max))); changed = true }
-                    if node.isA && node.name == "fld", node.attr("id") != nil { node.set("id", "{" + UUID().uuidString + "}"); changed = true }
+                    if node.isA && node.name == "fld", let id = node.attr("id") { let new = "{" + UUID().uuidString + "}"; renewedFields[part,default:[:]][id] = new; node.set("id",new); changed = true }
                     for child in node.children { renewMetadata(child) }
                 }
                 renewMetadata(tree)
@@ -146,9 +147,11 @@ enum PPTXCloner {
         }
         var slide = snapshot.slides[sourceIndex]; slide.id = newID
         slide.layoutPath = slide.layoutPath.flatMap { mapping[$0] }
-        func rebase(_ body: inout TextBody) throws {
+        slide.themeOverridePath = slide.themeOverridePath.map { mapping[$0] ?? $0 }
+        func rebase(_ body: inout TextBody, part: String) throws {
             for p in body.paragraphs.indices {
                 for r in body.paragraphs[p].runs.indices {
+                    if let id = body.paragraphs[p].runs[r].field?.id, let renewed = renewedFields[part]?[id] { body.paragraphs[p].runs[r].field?.id = renewed }
                     if case .slide(let part) = body.paragraphs[p].runs[r].link {
                         guard let originalID = sourceSlides[part], let target = slideTargets[originalID] else { throw SlideError.unsafeEdit("モデルのリンク対応がありません") }
                         body.paragraphs[p].runs[r].link = .slide(target)
@@ -156,19 +159,30 @@ enum PPTXCloner {
                 }
             }
         }
-        func rebaseElements(_ elements: inout [Element]) throws {
+        func rebaseReference(_ reference: inout PartReference?) { if let path = reference?.path { reference?.path = mapping[path] ?? path } }
+        func rebaseElements(_ elements: inout [Element], part: String) throws {
             for i in elements.indices {
                 if let path = elements[i].image?.path { elements[i].image?.path = mapping[path] ?? path }
-                if var text = elements[i].text { try rebase(&text); elements[i].text = text }
+                if var text = elements[i].text { try rebase(&text,part:part); elements[i].text = text }
                 if var table = elements[i].table {
-                    for row in table.rows.indices { for col in table.rows[row].indices { try rebase(&table.rows[row][col].text) } }
+                    for row in table.rows.indices { for col in table.rows[row].indices { try rebase(&table.rows[row][col].text,part:part) } }
                     elements[i].table = table
                 }
-                try rebaseElements(&elements[i].children)
+                if var chart = elements[i].chart {
+                    if let path = chart.part.path { chart.part.path = mapping[path] ?? path }
+                    rebaseReference(&chart.externalData); elements[i].chart = chart
+                }
+                if var diagram = elements[i].diagram {
+                    let drawingPart = diagram.drawing?.path ?? part
+                    rebaseReference(&diagram.data); rebaseReference(&diagram.layout); rebaseReference(&diagram.quickStyle)
+                    rebaseReference(&diagram.colors); rebaseReference(&diagram.drawing)
+                    try rebaseElements(&diagram.elements,part:drawingPart); elements[i].diagram = diagram
+                }
+                try rebaseElements(&elements[i].children,part:part)
             }
         }
-        try rebaseElements(&slide.elements)
-        if var notes = slide.notes { try rebase(&notes); slide.notes = notes }
+        try rebaseElements(&slide.elements,part:sourcePart)
+        if var notes = slide.notes { try rebase(&notes,part:storage.notesPaths[snapshot.slides[sourceIndex].id] ?? sourcePart); slide.notes = notes }
         func location(_ value: ReferenceLocation) -> ReferenceLocation {
             let part: String
             if let source = PPTXInventory.relationshipSource(value.part), let mapped = mapping[source] { part = OPCPackage.relationshipPart(for: mapped) }

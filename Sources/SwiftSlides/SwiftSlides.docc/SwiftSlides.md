@@ -1,4 +1,4 @@
-﻿# ``SwiftSlides``
+# ``SwiftSlides``
 
 提案書・分析資料を、形式中立のSendable値モデルで作成し、PowerPointファイルを読み書きします。
 
@@ -49,9 +49,36 @@ print(result.warnings)
 
 - ``Slide``
 - ``Element``
+- ``CustomGeometry``
+- ``GeometryPath``
+- ``PathCommand``
+- ``GeometryPoint``
+- ``GeometryGuide``
+- ``ElementEffects``
+- ``VisualEffect``
+- ``OuterShadow``
+- ``StyleReference``
+- ``SlideLayoutPart``
+- ``SlideMasterPart``
+- ``SlideLayoutReadResult``
+- ``SlideMasterReadResult``
+- ``Chart``
+- ``ChartGroup``
+- ``ChartSeries``
+- ``ChartData``
+- ``ChartPoint``
+- ``ChartAxis``
+- ``Diagram``
+- ``PartReference``
 - ``ShapeGeometry``
 - ``Fill``
 - ``Color``
+- ``ColorValue``
+- ``ColorBase``
+- ``ColorTransform``
+- ``ColorResolver``
+- ``ColorResolution``
+- ``ResolvedColor``
 - ``Stroke``
 - ``Arrowhead``
 - ``Image``
@@ -66,6 +93,13 @@ print(result.warnings)
 - ``TextBody``
 - ``Paragraph``
 - ``TextRun``
+- ``TextSpacing``
+- ``TextListStyle``
+- ``TextStyleLevel``
+- ``TextField``
+- ``TextFieldContext``
+- ``TextFieldEvaluator``
+- ``TextFieldEvaluation``
 - ``TextStyle``
 - ``Font``
 - ``ParagraphStyle``
@@ -104,3 +138,7 @@ print(result.warnings)
 - ``DiagnosticAction``
 - <doc:Reading>
 - <doc:Cookbook>
+
+### 表示用の情報
+
+- <doc:display-values>

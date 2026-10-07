@@ -1,4 +1,4 @@
-﻿# SwiftSlides 実装仕様
+# SwiftSlides 実装仕様
 
 この仕様はAPIと対応境界の正典。初期開発版、API互換性は未保証。
 
@@ -36,7 +36,7 @@ ODPはSlideODPの読取専用codec。Keynoteは限定wire試作のみでcodecは
 
 `CodecCapabilities.features`は`FeatureID`（機能台帳のID）、`CapabilityProfile`、操作ごとの`FeatureCapability`を返す。`capability(for:operation:profile:)`で照会できる。プロファイルは拡張可能な文字列型で、PPTXの`ooxmlTransitional`/`ooxmlStrict`、ODPの`odf12`/`odf13`/`odf14`を区別する。形式はCodecCapabilitiesのformatに従う。未掲載の機能・操作・プロファイル、および重複した宣言はunverifiedとし、形式全体の能力や別プロファイルの結果から補完しない。保存のプロファイル指定や文書単位の保存可否判定はまだ提供しない。
 
-詳細能力の正典は`docs/capabilities.json`。`python3 scripts/build-capabilities.py`でPPTX/ODPの宣言を生成し、`--check`で機能ID・重複・fixtureのSHA-256・対応テスト・操作/プロファイル別の証拠・生成結果を検査する。`CapabilityEvidence`は架空fixtureと回帰テストの定義・検証範囲を示す。テスト実行結果や実アプリ互換性の証明ではない。fixtureの加工条件はscopeに記す。掲載した限定範囲以外の217機能は未検証のままとする。
+詳細能力の正典は`docs/capabilities.json`。`python3 scripts/build-capabilities.py`でPPTX/ODPの宣言を生成し、`--check`で機能ID・重複・fixtureのSHA-256・対応テスト・操作/プロファイル別の証拠・生成結果を検査する。`CapabilityEvidence`は架空fixtureと回帰テストの定義・検証範囲を示す。テスト実行結果や実アプリ互換性の証明ではない。fixtureの加工条件はscopeに記す。掲載した限定範囲以外は未検証のままとする。
 
 `ReadResult.diagnostics`、`WriteResult.diagnostics`、`Presentation.readDiagnostics`は既存warningsの構造化投影。拡張可能な`DiagnosticCode`、read/write段階、severity、action、FeatureID（判明時のみ）、part/sourceElement/slideID/elementIDの位置、件数・説明を返す。sourceElementは従来のwarning.elementであり、XMLのlocal name等とモデルIDを同一視しない。未知の機能・位置を文言やlocal nameから推測しない。collectorは機能と位置が同じ診断だけ集約する。既存のwarnings、count、strict保存・危険編集の拒否規則は維持する。構造化診断が空でも完全互換を意味しない。参照inventoryとSavePlanは下記の契約を持つ。
 
@@ -47,6 +47,22 @@ ODPはSlideODPの読取専用codec。Keynoteは限定wire試作のみでcodecは
 根拠: [Swift 6.4](https://www.swift.org/blog/swift-6.4-released/)、[Concurrency](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/)、[SE-0461](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0461-async-function-isolation.md)。
 
 ## 読み取り
+
+### 表示用の直接値の投影
+
+描画用の情報取得をライブラリの責務とし、OS固有の描画・文字計測・ぼかし、Excel数式評価、SmartArt自動配置は提供しない。以下は原本の直接値であり、実効外観・完全互換を保証しない。
+
+- `TextSpacing.points` / `.percentage`はポイントと倍率（100%=1）を区別する。`ParagraphStyle`の`lineSpacingValue` / `spaceBeforeValue` / `spaceAfterValue`が旧Double属性より優先する。旧属性は表現できる単位のときだけ読取で設定する。nilと0を区別し、`overlaying(_:)`で指定属性だけを単位ごと上書きする。`TextBody.listStyle`、`Presentation.defaultTextStyle`、masterのtitle/body/otherスタイルは直接値として保持し、継承の自動適用はしない。
+- `TextRun.field`はID、type、原本キャッシュ、field内の段落書式を保持する。`TextFieldEvaluator`は明示された番号・日時・locale・timeZoneでslidenumとGregorianのdatetime / datetime1〜13 / datetimeFigureOutを評価し、未知・不正・特殊暦はキャッシュと診断を返す。datetimeはlocaleのshort date/timeとする。読取と評価はモデル・原本を変更しない。明示的保存時はrun.textとfield.cachedTextの一致が必要。`Presentation.firstSlideNumber`は未指定と整数を区別し、番号は非表示スライドも含む現在の文書順で求める。
+- `Color.value(ColorValue)`はsRGB/scheme/system/scRGB/HSL/presetの基本値とXML順の変換を保持する。変換なしのsRGB/schemeは既存ケースを使う。`ColorResolver`は明示されたtheme/colorMap/phClrとalpha/alphaMod/alphaOffのみを初期解決対象とし、その他は値と診断を返す。未解決値を成功したRGBへ変えない。新しい色ケースは読取専用で、新規生成・変更保存は拒否する。既存のColorをswitchする利用者は新ケースへの対応が必要。
+- `Presentation.readLayout(at:)` / `readMaster(at:)`は原本または取り込みパーツから共通Element/画像/表を読み、パーツ参照・背景・色map・showMasterSp・文字既定・themeOverrideと診断を返す。IDはパーツ内で一意で、パーツpathと組にして扱う。slideへ継承要素やサンプル文字を自動追加しない。外部取得はしない。
+- `Element.customGeometry`はパス固有座標、move/line/quadratic/cubic/arc/close、guide/adjustment式を保持する。数値パスは利用可能。式・円弧の評価は未提供で診断する。`Element.effects`は直接効果リスト、外側の影の寸法・角度・色とeffectRefを保持する。未知効果・DAGはXMLと診断を保持する。テーマeffect styleも投影する。自由曲線・効果の新規生成や属性変更保存は拒否する。
+- `Element.chart`は2D bar/line/pieを中心に元part、種類、grouping、系列順・タイトル・カテゴリ・値のcache/literal・数式・軸・凡例・書式XMLを読む。欠落indexを0で補わず疎な点列として保持する。外部・埋込データは参照だけを返し更新しない。unsupported種類・高度な書式は診断する。要素kindはopaqueを維持し、新規生成・変更保存は拒否する。
+- `Element.diagram`はdata/layout/quickStyle/colors/drawingの参照、データの文字と保存済みdrawingのElementを読む。描画がない場合は診断し、自動配置しない。DrawingML diagramの名前空間を確認し、循環や不正なパーツを空データに変えない。kindはopaqueで、編集保存は拒否する。
+
+新しいoptionalモデル属性がない旧JSONはnilとして読める。PPTX Transitional/Strictの合成fixtureで投影・原本保持・危険編集拒否を検証する。ODPについて新しい機能の対応を推測しない。read/preserveとcreate/edit/renderの能力は分けて台帳へ記す。
+
+フィールド形式の根拠: [Microsoft fld仕様](https://learn.microsoft.com/en-us/openspecs/office_standards/ms-oi29500/209a8afb-4ce6-4ad9-ad6b-f18da263502e)。色変換の根拠: [DrawingML Primer](https://download.microsoft.com/download/e/1/4/e14fb96f-83b8-4a2a-84db-7fa8acbe061a/Office%20Open%20XML%20Part%203%20-%20Primer.pdf)。
 
 ### 共通APIの整合性と値型編集
 
@@ -64,7 +80,7 @@ PPTX/PPTM、Transitional/Strict、stored/deflated ZIPとZIP64の読み取り。
 スライド寸法、名前、表示フラグ、図形/コネクタ/グループ/画像/表、直接指定の文字と段落書式、内部・外部リンク、ノート、メタデータをモデル化。
 グループ内座標は親ローカル座標。グループのchildFrameも保持。継承レイアウトとテーマは原本パーツとして保持、外観計算はしない。
 画像は内部参照とサイズ・代替文。画像バイトはasset(at:)で必要時にCRC検証・展開。
-Chart/SmartArt/OLE/動画/数式/アニメーション/遷移/拡張XMLは未解釈として原本に保持、警告。
+Chart/SmartArtはopaqueの原本に加え、上記の限定投影を提供する。OLE/動画/数式/アニメーション/遷移/拡張XMLは未解釈として原本に保持、警告。
 未知の図形はopaque要素、元XMLとパーツは保全。
 ノート省略指定時は警告、保存時は原本ノートを維持。
 OLEコンテナ(旧PPTまたは暗号化Office)、暗号ZIP、壊れたXML、欠落relationship、重複ID、制限超過はthrow。

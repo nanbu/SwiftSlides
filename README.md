@@ -99,8 +99,8 @@ FoundationのファイルI/O自体は同期です。URL保存は一時fileへの
 | 表 | 結合情報も読取 | 非結合表の生成/編集 | Table / TableCell |
 | ノート・メタデータ | 対応 | 対応 | notes / Metadata |
 | テーマ・script別フォント | sourceThemesで定義読取 | 新規Themeのみ | ThemePart / Theme / Font |
-| master/layout継承・色変換 | 参照と原本を保持 | 保持 | 実効外観は未計算 |
-| Chart/SmartArt/OLE/動画 | opaque/警告 | 未変更部分を保持 | 新規作成・動作解釈なし |
+| master/layoutの型付き読取 | 直接要素・表・参照鎖・文字既定 | 原本を保持・投影変更を拒否 | readLayout / readMaster、継承の自動適用なし |
+| Chart/SmartArt/OLE/動画 | chart cache・保存済みdiagram、他はopaque | 原本を保持・投影変更を拒否 | Element.chart / diagram、描画・再計算なし |
 | アニメーション・遷移・拡張XML | 原本/警告 | 未変更部分を保持 | タイミングのモデルなし |
 | PPTM・マクロ | 保持/警告 | 既存形式で保持 | 実行・新規VBA作成なし |
 | Strict/ZIP64/変則パーツ名 | 対応 | Strict編集・ZIP32保存 | Strict新規slide生成は拒否、原本複製可 |
@@ -121,6 +121,10 @@ FoundationのファイルI/O自体は同期です。URL保存は一時fileへの
 | 文書単位のtransaction | モデルと原本を値として保持 | writer検査後に反映・strict既定 | 事前エンコードの時間とDataメモリが必要 |
 | 保存形式・拡張子の一致 | 内容で形式判定 | 認識できる拡張子との不一致を拒否 | 拡張子から暗黙変換しない |
 | Keynote | 公開codec未提供、wire限定試作 | 試作のみ・同長文字1field | 15.4で再包装・局所編集・再保存を確認 |
+| 単位付き行間・段落余白 | points/percentage・明示的0・直接既定 | 基本生成・編集 | TextSpacing、文字測定・実効継承なし |
+| フィールド保持と明示評価 | ID/type/cache/書式・初期番号 | 基本保存・run/cache一致が必要 | TextFieldEvaluator、Gregorian日時・番号 |
+| 順序付き色変換 | 基本値と変換、透明度系の解決 | 原本保持・新しい色の書換えを拒否 | ColorValue / ColorResolver、他の変換は診断 |
+| 自由曲線・外側の影 | Bezier/close・数値座標・影・effectRef | 原本保持・投影変更を拒否 | CustomGeometry / ElementEffects、式・合成は未提供 |
 <!-- contract:end -->
 
 未対応要素には警告を付け、元パッケージを保持します。PPTX/PPTMの未変更保存は原本bytesそのまま。
@@ -155,3 +159,5 @@ swift run swiftslides sample proposal.pptx
 MIT。SwiftDocumentsのMITなZIP/OPC実装を利用し、[NOTICE](NOTICE)に帰属を残しています。
 図形・文字・レイアウト・テーマの実装は公開形式仕様を参照した独自実装です。
 フォントファイルや購入した商用アセットを含みません。架空fixtureのpython-pptx由来パーツにはMITの帰属・許諾を同梱しています。
+
+表示用の直接値と責務の範囲は[表示用API](docs/display-values.md)を参照してください。

@@ -15,3 +15,5 @@ LibreOffice由来fixtureは`scripts/verify-interop.py`でpython-pptx文書を再
 - `impress.odp`: 従来のmimetype検出用marker fixture。完全なODPではなく、必須part不足の負例。
 
 Keynote実アプリ試作は一時領域だけで行い、アプリthemeの画像をfixtureとして再配布しない。合成wireデータの検査は`python3 scripts/probe-keynote.py --self-test`で再現する。
+
+- `reading-models.pptx` / `reading-models-strict.pptx`: `scripts/generate-reading-fixture.py`で決定的に生成する架空の投影fixture。単位付き間隔、field、色変換、layout/masterの表・画像、自由曲線、影、疎なchart cache、diagramの保存済みdrawing。Strict版は名前空間置換で、Strict producerやピクセル互換性の証拠ではない。

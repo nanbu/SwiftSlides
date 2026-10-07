@@ -7,6 +7,7 @@ enum ModelValidation {
     static func color(_ c: Color) throws {
         switch c {
         case .rgb(let hex): guard hex.count == 6, hex.utf8.allSatisfy({ (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0) }) else { throw SlideError.invalidModel("RGBは6桁の16進数です") }
+        case .value: break // 読取投影は保全可。書換えはXML writerで拒否する。
         case .theme(let key): guard ["dk1","lt1","dk2","lt2","accent1","accent2","accent3","accent4","accent5","accent6","hlink","folHlink","bg1","bg2","tx1","tx2","phClr"].contains(key) else { throw SlideError.invalidModel("未知のテーマ色") }
         }
     }
@@ -21,16 +22,22 @@ enum ModelValidation {
         for (script,family) in s.font.supplementalFamilies { guard script.count == 4 else { throw SlideError.invalidModel("scriptタグは4文字です") }; try string(script); try string(family) }
         if let c = s.color { try color(c) }
     }
+    static func paragraphStyle(_ s: ParagraphStyle) throws {
+            if let l = s.level, !(0...8).contains(l) { throw SlideError.invalidModel("段落レベルは0〜8です") }
+            for n in [s.leftMargin,s.indent,s.spaceBefore,s.spaceAfter,s.lineSpacing].compactMap({$0}) { try number(n) }
+            if s.lineSpacingValue == nil, let l = s.lineSpacing, l < 0 { throw SlideError.invalidModel("行間は正です") }
+            if case .character(let c) = s.bullet { guard c.count == 1 else { throw SlideError.invalidModel("箇条書きの記号は1文字です") }; try string(c) }
+            if case .numbered(let type,let start) = s.bullet { let allowed = ["alphaLcParenBoth","alphaUcParenBoth","alphaLcParenR","alphaUcParenR","alphaLcPeriod","alphaUcPeriod","arabicParenBoth","arabicParenR","arabicPeriod","arabicPlain","romanLcParenBoth","romanUcParenBoth","romanLcParenR","romanUcParenR","romanLcPeriod","romanUcPeriod","circleNumDbPlain","circleNumWdBlackPlain","circleNumWdWhitePlain","arabicDbPeriod","arabicDbPlain","ea1ChsPeriod","ea1ChsPlain","ea1ChtPeriod","ea1ChtPlain","ea1JpnChsDbPeriod","ea1JpnKorPlain","ea1JpnKorPeriod","arabic1Minus","arabic2Minus","hebrew2Minus","thaiAlphaPeriod","thaiAlphaParenR","thaiAlphaParenBoth","thaiNumPeriod","thaiNumParenR","thaiNumParenBoth","hindiAlphaPeriod","hindiNumPeriod","hindiNumParenR","hindiAlpha1Period"]; guard allowed.contains(type), (1...32767).contains(start) else { throw SlideError.invalidModel("箇条書き番号の種類・開始値が不正です") } }
+        for value in [s.effectiveLineSpacing,s.effectiveSpaceBefore,s.effectiveSpaceAfter].compactMap({ $0 }) {
+            switch value { case .points(let n), .percentage(let n): try number(n,nonnegative:true) }
+        }
+    }
     static func text(_ t: TextBody?) throws {
         try Task.checkCancellation()
         guard let t else { return }; try insets(t.insets)
         for p in t.paragraphs {
             try Task.checkCancellation()
-            if let l = p.style.level, !(0...8).contains(l) { throw SlideError.invalidModel("段落レベルは0〜8です") }
-            for n in [p.style.leftMargin,p.style.indent,p.style.spaceBefore,p.style.spaceAfter,p.style.lineSpacing].compactMap({$0}) { try number(n) }
-            if let l = p.style.lineSpacing, l <= 0 { throw SlideError.invalidModel("行間は正です") }
-            if case .character(let c) = p.style.bullet { guard c.count == 1 else { throw SlideError.invalidModel("箇条書きの記号は1文字です") }; try string(c) }
-            if case .numbered(let type,let start) = p.style.bullet { let allowed = ["alphaLcParenBoth","alphaUcParenBoth","alphaLcParenR","alphaUcParenR","alphaLcPeriod","alphaUcPeriod","arabicParenBoth","arabicParenR","arabicPeriod","arabicPlain","romanLcParenBoth","romanUcParenBoth","romanLcParenR","romanUcParenR","romanLcPeriod","romanUcPeriod","circleNumDbPlain","circleNumWdBlackPlain","circleNumWdWhitePlain","arabicDbPeriod","arabicDbPlain","ea1ChsPeriod","ea1ChsPlain","ea1ChtPeriod","ea1ChtPlain","ea1JpnChsDbPeriod","ea1JpnKorPlain","ea1JpnKorPeriod","arabic1Minus","arabic2Minus","hebrew2Minus","thaiAlphaPeriod","thaiAlphaParenR","thaiAlphaParenBoth","thaiNumPeriod","thaiNumParenR","thaiNumParenBoth","hindiAlphaPeriod","hindiNumPeriod","hindiNumParenR","hindiAlpha1Period"]; guard allowed.contains(type), (1...32767).contains(start) else { throw SlideError.invalidModel("箇条書き番号の種類・開始値が不正です") } }
+            try paragraphStyle(p.style)
             try style(p.defaultTextStyle); try style(p.endTextStyle)
             for run in p.runs { try string(run.text); try style(run.style); if let link = run.link { switch link { case .external(let u), .slide(let u): try string(u); guard !u.isEmpty else { throw SlideError.invalidModel("空のリンク") } } } }
         }
@@ -64,6 +71,7 @@ enum ModelValidation {
     static func presentation(_ p: Presentation) throws {
         try Task.checkCancellation()
         try number(p.size.width); try number(p.size.height); guard p.size.width > 0, p.size.height > 0 else { throw SlideError.invalidModel("スライド寸法は正です") }
+        if let number = p.firstSlideNumber, !(Int(Int32.min)...Int(Int32.max)).contains(number) { throw SlideError.invalidModel("最初のスライド番号が範囲外です") }
         for value in [p.metadata.title,p.metadata.subject,p.metadata.creator,p.metadata.description,p.metadata.keywords].compactMap({$0}) { try string(value) }
         try string(p.theme.name); try style(.init(font:p.theme.titleFont),allowSupplemental:true); try style(.init(font:p.theme.bodyFont),allowSupplemental:true)
         for key in ["dk1","lt1","dk2","lt2","accent1","accent2","accent3","accent4","accent5","accent6","hlink","folHlink"] { guard let hex = p.theme.colors[key] else { throw SlideError.invalidModel("テーマ色 \(key) がありません") }; try color(.rgb(hex)) }

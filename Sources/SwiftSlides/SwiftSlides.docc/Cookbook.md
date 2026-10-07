@@ -259,3 +259,36 @@ print(summary.slideCount, reader.slideDescriptors, encoded.warnings)
 ```
 
 umbrellaのread/inspectにも同じ`format:`があります。同期コードではcodecsを省略した`SlideReader(data: bytes)` / `SlideReader(contentsOf: input)`も利用できます。readは内容判定、writeは明示形式→元形式→PPTXで選び、認識できる保存先拡張子との不一致を拒否します。
+
+
+## 単位付き間隔とフィールドの評価
+
+```swift
+let paragraph = ParagraphStyle(lineSpacingValue: .points(18),
+                               spaceBeforeValue: .percentage(0.5))
+let direct = ParagraphStyle(lineSpacingValue: .percentage(1.2))
+let resolvedSpacing = paragraph.overlaying(direct).effectiveLineSpacing
+// resolvedSpacingはpercentage(1.2)。割合の測定・配置はレンダラーが行う。
+let field = TextField(id: "{11111111-1111-1111-1111-111111111111}",
+                      type: "slidenum", cachedText: "1")
+let context = TextFieldContext(slideNumber: 2, date: Date(timeIntervalSince1970: 0),
+                              localeIdentifier: "en_US_POSIX", timeZoneIdentifier: "UTC")
+let evaluated = TextFieldEvaluator.evaluate(field, context: context)
+// evaluated.textとdiagnosticsを使う。モデル・原本は変更しない。
+```
+
+## 継承元と色変換の読取
+
+```swift
+let layoutPath = presentation.slides[0].layoutPath!
+let layout = try presentation.readLayout(at: layoutPath)
+let master = try presentation.readMaster(at: layout.layout.masterPath!)
+// layout/masterのelementsは直接値。サンプル文字をslideへ自動追加しない。
+let color = Color.value(ColorValue(base: .scheme("accent1"), transforms: [
+    ColorTransform(name: "alpha", value: "50000")
+]))
+let resolution = ColorResolver.resolve(color, theme: presentation.sourceThemes[0].colors)
+// 未解決時はcolor=nilと診断。theme/colorMap/phClrは呼出側で選ぶ。
+```
+
+Element.customGeometry / effects / chart / diagramは読取投影です。書換え・新規生成と描画は限定契約の対象外です。単位付き間隔とfieldの基本保存は可能ですが、field更新時はrun.textとfield.cachedTextを一致させます。詳しい境界は[表示用API](display-values.md)を参照してください。

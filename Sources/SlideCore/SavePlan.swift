@@ -38,11 +38,13 @@ private struct ModelSnapshot: Encodable {
     let theme: Theme
     let sourceFormat: PresentationFormat?
     let sourceThemes: [ThemePart]
+    let firstSlideNumber: Int?
+    let defaultTextStyle: TextListStyle?
 }
 
 extension Presentation {
     package func modelFingerprint() throws -> String {
-        try Fingerprint.encode(ModelSnapshot(size: size, slides: slides, metadata: metadata, theme: theme, sourceFormat: sourceFormat, sourceThemes: sourceThemes))
+        try Fingerprint.encode(ModelSnapshot(size: size, slides: slides, metadata: metadata, theme: theme, sourceFormat: sourceFormat, sourceThemes: sourceThemes, firstSlideNumber: firstSlideNumber, defaultTextStyle: defaultTextStyle))
     }
     package func sourceFingerprint() throws -> String {
         struct Snapshot: Encodable { let original: String; let clones: [String: SlideClone] }
