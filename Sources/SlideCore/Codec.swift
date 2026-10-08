@@ -1,17 +1,19 @@
 import Foundation
 
-/// 対応候補の形式。Keynoteのコーデックは未提供。ODPは読取専用。
+/// 対応候補の形式。ODPとKeynoteは読取専用。
 public enum PresentationFormat: String, Sendable, Codable {
-    case pptx, pptm, odp, keynote
+    case pptx, pptm, odp, keynote, ppt, keynoteLegacy, sxi
 
     /// 標準拡張子。対応codecの有無とは独立した形式名。
-    public var fileExtension: String { self == .keynote ? "key" : rawValue }
+    public var fileExtension: String { self == .keynote || self == .keynoteLegacy ? "key" : rawValue }
     public init?(fileExtension: String) {
         switch fileExtension.lowercased() {
         case "pptx": self = .pptx
         case "pptm": self = .pptm
-        case "odp": self = .odp
+        case "odp", "fodp": self = .odp
         case "key": self = .keynote
+        case "ppt", "pot", "pps": self = .ppt
+        case "sxi", "sti": self = .sxi
         default: return nil
         }
     }
@@ -19,7 +21,7 @@ public enum PresentationFormat: String, Sendable, Codable {
 /// 解析・保存が成功できない理由。
 public enum SlideError: Error, Sendable, Equatable, CustomStringConvertible {
     case unknownFormat
-    case noCodec(PresentationFormat)
+    case noCodec(for: PresentationFormat)
     case unsupportedContainer(String)
     case corruptedPackage(String)
     case invalidXML(part: String, detail: String)
@@ -32,6 +34,8 @@ public enum SlideError: Error, Sendable, Equatable, CustomStringConvertible {
     case outputFormatMismatch(format: PresentationFormat, fileExtension: String)
     case unsafeEdit(String)
     case stalePlan
+    case wrongPassword
+    case unsupportedEncryption(detail: String)
     public var description: String {
         switch self {
         case .unknownFormat: "プレゼンテーションの形式を判定できません。"
@@ -48,6 +52,8 @@ public enum SlideError: Error, Sendable, Equatable, CustomStringConvertible {
         case .outputFormatMismatch(let format, let ext): "保存形式 \(format.rawValue) と保存先の拡張子 .\(ext) が一致しません。"
         case .unsafeEdit(let s): "安全に保存できない編集: \(s)"
         case .stalePlan: "保存計画の作成後に原本・モデル・保存条件・コーデック登録が変わりました。再計画してください。"
+        case .wrongPassword: "パスワードが一致しません。"
+        case .unsupportedEncryption(let s): "未対応の暗号方式: \(s)"
         }
     }
 }
@@ -63,10 +69,29 @@ public struct PackageLimits: Sendable {
         self.maxEntries = maxEntries; self.maxExpandedBytes = maxExpandedBytes; self.maxPartBytes = maxPartBytes; self.maxXMLDepth = maxXMLDepth; self.maxXMLNodes = maxXMLNodes; self.maxTableCells = maxTableCells
     }
 }
-public struct ReadOptions: Sendable {
+/// モデルを構築せず検査する際の設定。
+public struct InspectOptions: Sendable {
     public var limits: PackageLimits
-    public var includeNotes: Bool
-    public init(limits: PackageLimits = .init(), includeNotes: Bool = true) { self.limits = limits; self.includeNotes = includeNotes }
+    public init(limits: PackageLimits = .init()) { self.limits = limits }
+}
+public struct ReadOptions: Sendable {
+    /// 展開済み索引パーツの共有cache上限。file readerの圧縮cacheBytesとは別枠。
+    public var indexedCacheBytes: Int = 8 << 20
+    public var odfTransformAngleUnit: ODFTransformAngleUnit = .radians
+    /// 独自ODP engineの明示解釈器。nilの結果は原本/診断へ残す。
+    public var geometryProvider: (@Sendable (CustomGeometryRequest) throws -> EnhancedGeometry?)?
+    /// 外部workbookを呼出側が明示的に供給する。libraryはネットワーク取得しない。
+    public var workbookProvider: (@Sendable (PartReference) throws -> Data)?
+    public var limits: PackageLimits
+    public var includesNotes: Bool
+    public init(limits: PackageLimits = .init(), includesNotes: Bool = true,
+                indexedCacheBytes: Int = 8 << 20, odfTransformAngleUnit: ODFTransformAngleUnit = .radians,
+                geometryProvider: (@Sendable (CustomGeometryRequest) throws -> EnhancedGeometry?)? = nil,
+                workbookProvider: (@Sendable (PartReference) throws -> Data)? = nil) {
+        self.limits = limits; self.includesNotes = includesNotes
+        self.indexedCacheBytes = indexedCacheBytes; self.odfTransformAngleUnit = odfTransformAngleUnit
+        self.geometryProvider = geometryProvider; self.workbookProvider = workbookProvider
+    }
 }
 /// 保存に伴う警告を許容するか。strictは変更に伴う警告があればthrow。
 public struct WriteOptions: Sendable, Equatable, Codable {
@@ -123,8 +148,8 @@ public struct ReadResult: Sendable {
 }
 /// 保存結果のbytesと編集に伴う警告。
 public struct WriteResult: Sendable {
-    public var data: Data
-    public var warnings: [SlideWarning]
+    public let data: Data
+    public let warnings: [SlideWarning]
     public var diagnostics: [SlideDiagnostic] { warnings.map { $0.diagnostic(stage: .write) } }
     public init(data: Data, warnings: [SlideWarning] = []) { self.data = data; self.warnings = warnings }
 }
@@ -144,7 +169,7 @@ public protocol PresentationCodec: Sendable {
     var format: PresentationFormat { get }
     var capabilities: CodecCapabilities { get }
     func read(_ data: Data, options: ReadOptions) throws -> ReadResult
-    func inspect(_ data: Data, limits: PackageLimits) throws -> PresentationSummary
+    func inspect(_ data: Data, options: InspectOptions) throws -> PresentationSummary
     func write(_ presentation: Presentation, options: WriteOptions) throws -> WriteResult
 }
 extension PresentationCodec {
@@ -173,30 +198,30 @@ public struct CodecSet: Sendable {
     }
     public func contains(_ format: PresentationFormat) -> Bool { codecs[format] != nil }
     public func codec(for format: PresentationFormat) throws -> Codec {
-        guard let codec = codecs[format] else { throw SlideError.noCodec(format) }
+        guard let codec = codecs[format] else { throw SlideError.noCodec(for: format) }
         return codec
     }
     package func codec(_ format: PresentationFormat) throws -> any PresentationCodec { try codec(for: format).implementation }
     public func capabilities(for format: PresentationFormat) throws -> CodecCapabilities { try codec(format).capabilities }
     public func read(_ data: Data, format: PresentationFormat? = nil, options: ReadOptions = .init()) throws -> ReadResult { try readSync(data, format: format, options: options) }
-    public func read(contentsOf url: URL, options: ReadOptions = .init()) throws -> ReadResult { try readURLSync(url, options: options) }
-    public func inspect(_ data: Data, format: PresentationFormat? = nil, limits: PackageLimits = .init()) throws -> PresentationSummary { try inspectSync(data, format: format, limits: limits) }
-    public func inspect(contentsOf url: URL, limits: PackageLimits = .init()) throws -> PresentationSummary { try inspectURLSync(url, limits: limits) }
+    public func read(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init()) throws -> ReadResult { try readURLSync(url, format: format, options: options) }
+    public func inspect(_ data: Data, format: PresentationFormat? = nil, options: InspectOptions = .init()) throws -> PresentationSummary { try inspectSync(data, format: format, options: options) }
+    public func inspect(contentsOf url: URL, format: PresentationFormat? = nil, options: InspectOptions = .init()) throws -> PresentationSummary { try inspectURLSync(url, format: format, options: options) }
     public func write(_ presentation: Presentation, as format: PresentationFormat? = nil, options: WriteOptions = .init()) throws -> WriteResult { try writeSync(presentation, format: format, options: options) }
     /// atomicでbytesを保存する。警告を戻り値に含める。
     public func write(_ presentation: Presentation, to url: URL, as format: PresentationFormat? = nil, options: WriteOptions = .init()) throws -> WriteResult { try writeURLSync(presentation, to: url, format: format, options: options) }
 
     /// 呼出元Actorを占有せず解析する。キャンセルは協調的。
     @concurrent public func read(_ data: Data, format: PresentationFormat? = nil, options: ReadOptions = .init()) async throws -> ReadResult { try readSync(data, format: format, options: options) }
-    @concurrent public func read(contentsOf url: URL, options: ReadOptions = .init()) async throws -> ReadResult { try readURLSync(url, options: options) }
-    @concurrent public func inspect(_ data: Data, format: PresentationFormat? = nil, limits: PackageLimits = .init()) async throws -> PresentationSummary { try inspectSync(data, format: format, limits: limits) }
-    @concurrent public func inspect(contentsOf url: URL, limits: PackageLimits = .init()) async throws -> PresentationSummary { try inspectURLSync(url, limits: limits) }
+    @concurrent public func read(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init()) async throws -> ReadResult { try readURLSync(url, format: format, options: options) }
+    @concurrent public func inspect(_ data: Data, format: PresentationFormat? = nil, options: InspectOptions = .init()) async throws -> PresentationSummary { try inspectSync(data, format: format, options: options) }
+    @concurrent public func inspect(contentsOf url: URL, format: PresentationFormat? = nil, options: InspectOptions = .init()) async throws -> PresentationSummary { try inspectURLSync(url, format: format, options: options) }
     @concurrent public func write(_ presentation: Presentation, as format: PresentationFormat? = nil, options: WriteOptions = .init()) async throws -> WriteResult { try writeSync(presentation, format: format, options: options) }
     /// 一時fileへの分割書込境界とatomic確定直前にキャンセル確認。確定後には確認しない。
     @concurrent public func write(_ presentation: Presentation, to url: URL, as format: PresentationFormat? = nil, options: WriteOptions = .init()) async throws -> WriteResult { try writeURLSync(presentation, to: url, format: format, options: options) }
-    @concurrent public func readAll(contentsOf urls: [URL], options: ReadOptions = .init(), maxConcurrentReads: Int = 4) async throws -> [ReadResult] {
+    @concurrent public func readAll(contentsOf urls: [URL], format: PresentationFormat? = nil, options: ReadOptions = .init(), maxConcurrentReads: Int = 4) async throws -> [ReadResult] {
         try await boundedMap(urls, maxConcurrent: maxConcurrentReads) { url in
-            try await self.read(contentsOf: url, options: options)
+            try await self.read(contentsOf: url, format: format, options: options)
         }
     }
 
@@ -205,18 +230,18 @@ public struct CodecSet: Sendable {
         let result = try codec(format ?? PresentationFormat.detect(data, limits: options.limits)).read(data, options: options)
         try Task.checkCancellation(); return result
     }
-    private func readURLSync(_ url: URL, options: ReadOptions) throws -> ReadResult {
+    private func readURLSync(_ url: URL, format: PresentationFormat?, options: ReadOptions) throws -> ReadResult {
         try Task.checkCancellation()
-        return try readSync(Data(contentsOf: url, options: .mappedIfSafe), format: nil, options: options)
+        return try readSync(PackageInput.read(url, limits: options.limits), format: format, options: options)
     }
-    private func inspectSync(_ data: Data, format: PresentationFormat?, limits: PackageLimits) throws -> PresentationSummary {
+    private func inspectSync(_ data: Data, format: PresentationFormat?, options: InspectOptions) throws -> PresentationSummary {
         try Task.checkCancellation()
-        let result = try codec(format ?? PresentationFormat.detect(data, limits: limits)).inspect(data, limits: limits)
+        let result = try codec(format ?? PresentationFormat.detect(data, limits: options.limits)).inspect(data, options: options)
         try Task.checkCancellation(); return result
     }
-    private func inspectURLSync(_ url: URL, limits: PackageLimits) throws -> PresentationSummary {
+    private func inspectURLSync(_ url: URL, format: PresentationFormat?, options: InspectOptions) throws -> PresentationSummary {
         try Task.checkCancellation()
-        return try inspectSync(Data(contentsOf: url, options: .mappedIfSafe), format: nil, limits: limits)
+        return try inspectSync(PackageInput.read(url, limits: options.limits), format: format, options: options)
     }
     private func writeSync(_ presentation: Presentation, format: PresentationFormat?, options: WriteOptions) throws -> WriteResult {
         try Task.checkCancellation()

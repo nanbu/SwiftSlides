@@ -9,14 +9,14 @@ import SwiftSlides
     #expect(copy.canSave)
     #expect(copy.changedPartCount == 0)
     #expect(copy.actions.allSatisfy { $0.kind == .copy })
-    #expect(try original.encoded(using: copy).data == data)
+    #expect(try original.write(using: copy).data == data)
     var changed = original
     changed.slides[0].elements[0].frame?.x = 80
     let patch = try changed.planWrite(options: .init(strict: true))
     #expect(patch.canSave)
     #expect(patch.actions.filter { $0.kind == .patch }.map(\.part) == ["ppt/slides/slide1.xml", "ppt/slides/_rels/slide1.xml.rels"].sorted())
     #expect(patch.changedExpandedBytes > 0)
-    #expect(try Presentation(data: changed.encoded(using: patch).data).slides[0].elements[0].frame?.x == 80)
+    #expect(try Presentation(data: changed.write(using: patch).data).slides[0].elements[0].frame?.x == 80)
     let create = try textPresentation().planWrite()
     #expect(create.canSave && create.actions.allSatisfy { $0.kind == .create })
 }
@@ -29,12 +29,12 @@ import SwiftSlides
     try sentinel.write(to: url)
     defer { try? FileManager.default.removeItem(at: url) }
     p.slides[0].elements[0].text = .init("Changed")
-    #expect(throws: SlideError.stalePlan) { try p.save(to: url, using: plan) }
+    #expect(throws: SlideError.stalePlan) { try p.write(to: url, using: plan) }
     #expect(try Data(contentsOf: url) == sentinel)
     p = try Presentation(data: fixture())
-    #expect(throws: SlideError.stalePlan) { try p.encoded(using: plan, options: .init(compress: false)) }
+    #expect(throws: SlideError.stalePlan) { try p.write(using: plan, options: .init(compress: false)) }
     p = try Presentation(data: changedFixture { $0["unrelated.bin"] = Data([1, 2, 3]) })
-    #expect(throws: SlideError.stalePlan) { try p.encoded(using: plan) }
+    #expect(throws: SlideError.stalePlan) { try p.write(using: plan) }
 }
 
 @Test func rejectedSavePlansKeepReasonsAndDestination() throws {
@@ -46,7 +46,7 @@ import SwiftSlides
     p.slides[1].elements[0].frame?.x = 12
     let unsafe = try p.planWrite()
     #expect(!unsafe.canSave && unsafe.diagnostics.first?.code == "unsafeEdit")
-    #expect(throws: SlideError.self) { try p.encoded(using: unsafe) }
+    #expect(throws: SlideError.self) { try p.write(using: unsafe) }
     #expect(try !p.planWrite(as: .odp).canSave)
     p = try Presentation(data: fixture())
     p.slides[0].elements[0].text = .init("Rewrite")
@@ -70,11 +70,11 @@ import SwiftSlides
     defer { try? FileManager.default.removeItem(at: url) }
     let task = Task {
         withUnsafeCurrentTask { $0?.cancel() }
-        return try await p.save(to: url, using: plan)
+        return try await p.write(to: url, using: plan)
     }
     await #expect(throws: CancellationError.self) { try await task.value }
     #expect(try Data(contentsOf: url) == sentinel)
-    let saved = try await p.save(to: url, using: plan)
+    let saved = try await p.write(to: url, using: plan)
     #expect(saved.warnings.isEmpty)
     #expect(try Presentation(contentsOf: url).plainText == "Hello")
 }
@@ -86,6 +86,6 @@ import SwiftSlides
     defer { try? FileManager.default.removeItem(at: target) }
     let child = target.appendingPathComponent("sentinel")
     let contents = Data("保持する内容".utf8); try contents.write(to: child)
-    do { _ = try p.save(to: target, using: plan); Issue.record("ディレクトリへの保存が成功しました") }
+    do { _ = try p.write(to: target, using: plan); Issue.record("ディレクトリへの保存が成功しました") }
     catch { #expect(try Data(contentsOf: child) == contents) }
 }

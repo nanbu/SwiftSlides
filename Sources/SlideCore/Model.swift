@@ -79,6 +79,7 @@ public struct Font: Sendable, Equatable, Codable {
 }
 /// 文字の直接指定書式。nilは未指定で、実効値の計算ではない。
 public struct TextStyle: Sendable, Equatable, Codable {
+    public var appearance: TextAppearance?
     public var font: Font
     public var bold: Bool?
     public var italic: Bool?
@@ -97,6 +98,8 @@ public struct TextRun: Sendable, Equatable, Codable {
     public var style: TextStyle
     public var link: Link?
     public var field: TextField?
+    /// 読取専用。textは数式の字句文字列であり、線形式・計算結果ではない。
+    public var equation: Equation?
     public init(_ text: String, style: TextStyle = .init(), link: Link? = nil, field: TextField? = nil) { self.text = text; self.style = style; self.link = link; self.field = field }
 }
 /// 行の揃え位置。
@@ -135,13 +138,23 @@ public struct Paragraph: Sendable, Equatable, Codable {
 public enum VerticalAlignment: String, Sendable, Codable { case top = "t", center = "ctr", bottom = "b" }
 /// 図形内の段落・余白・折り返し。レンダリングや文字計測は行わない。
 public struct TextBody: Sendable, Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case appearance
+        case paragraphs
+        case insets
+        case verticalAlignment
+        case wrapsText = "wrap"
+        case listStyle
+    }
+
+    public var appearance: TextAppearance?
     public var paragraphs: [Paragraph]
     public var insets: Insets?
     public var verticalAlignment: VerticalAlignment?
-    public var wrap: Bool?
+    public var wrapsText: Bool?
     public var listStyle: TextListStyle?
-    public init(paragraphs: [Paragraph] = [], insets: Insets? = nil, verticalAlignment: VerticalAlignment? = nil, wrap: Bool? = nil, listStyle: TextListStyle? = nil) {
-        self.paragraphs = paragraphs; self.insets = insets; self.verticalAlignment = verticalAlignment; self.wrap = wrap; self.listStyle = listStyle
+    public init(paragraphs: [Paragraph] = [], insets: Insets? = nil, verticalAlignment: VerticalAlignment? = nil, wrapsText: Bool? = nil, listStyle: TextListStyle? = nil) {
+        self.paragraphs = paragraphs; self.insets = insets; self.verticalAlignment = verticalAlignment; self.wrapsText = wrapsText; self.listStyle = listStyle
     }
     public init(_ text: String, style: TextStyle = .init(), alignment: TextAlignment? = nil, insets: Insets? = nil, verticalAlignment: VerticalAlignment? = nil) {
         self.init(paragraphs: text.components(separatedBy: "\n").map { Paragraph($0, style: .init(alignment: alignment), textStyle: style) }, insets: insets, verticalAlignment: verticalAlignment)
@@ -176,6 +189,8 @@ public struct Image: Sendable, Equatable, Codable {
 }
 /// 表セル。rowSpan/columnSpanと継続セルのフラグを保持する。
 public struct TableCell: Sendable, Equatable, Codable {
+    public var nativeProperties: NativeCellProperties?
+    public var nativeFormula: CellFormula?
     public var borders: [TableCellBorder]?
     public var value: TableCellValue?
     public var formula: String?
@@ -207,6 +222,50 @@ public struct Placeholder: Sendable, Equatable, Codable {
 }
 /// 図形、線、画像、表、グループ、未解釈要素。idはスライド内で一意。
 public struct Element: Sendable, Equatable, Codable, Identifiable {
+    private enum CodingKeys: String, CodingKey {
+        case nativeGeometry
+        case sourceProperties
+        case nativeObjectID
+        case media
+        case nativeFeatures
+        case id
+        case name
+        case kind
+        case isTextBox
+        case frame
+        case rotation
+        case isFlippedHorizontally = "flipHorizontal"
+        case isFlippedVertically = "flipVertical"
+        case geometry
+        case transform2D
+        case textPath
+        case geometryEngine
+        case customGeometry
+        case enhancedGeometry
+        case equation
+        case effects
+        case model3D
+        case spatialGeometry
+        case scene3D
+        case shape3D
+        case chart
+        case diagram
+        case fill
+        case stroke
+        case text
+        case image
+        case table
+        case children
+        case childFrame
+        case placeholder
+        case rawXML
+    }
+
+    public var nativeGeometry: NativeGeometry?
+    /// 直接属性・省略・未知内容を全て取得するための原本構造。編集用モデルではない。
+    public var sourceProperties: SourceXMLNode?
+    /// 形式固有のバイナリobject identity。意味未解釈の内容はcodecの原本索引で取得する。
+    public var nativeObjectID: UInt64?
     public var media: [MediaReference]?
     public var nativeFeatures: [NativeFeatureDescriptor]?
     public enum Kind: String, Sendable, Codable { case shape, connector, image, table, group, opaque }
@@ -218,11 +277,21 @@ public struct Element: Sendable, Equatable, Codable, Identifiable {
     /// nilは継承または未指定。サイズを計算した結果ではない。
     public var frame: Rect?
     public var rotation: Double
-    public var flipHorizontal: Bool
-    public var flipVertical: Bool
+    public var isFlippedHorizontally: Bool
+    public var isFlippedVertically: Bool
     public var geometry: ShapeGeometry?
+    public var transform2D: DrawingTransform?
+    public var textPath: TextPathProperties?
+    public var geometryEngine: String?
     public var customGeometry: CustomGeometry?
+    public var enhancedGeometry: EnhancedGeometry?
+    /// ODP objectの数式。inline数式はTextRun.equationに保持する。
+    public var equation: Equation?
     public var effects: ElementEffects?
+    public var model3D: Model3DReference?
+    public var spatialGeometry: SpatialGeometry?
+    public var scene3D: Scene3D?
+    public var shape3D: Shape3D?
     public var chart: Chart?
     public var diagram: Diagram?
     public var fill: Fill?
@@ -237,13 +306,39 @@ public struct Element: Sendable, Equatable, Codable, Identifiable {
     /// 保存で保全される未解釈XMLの説明用コピー。編集不可。
     public internal(set) var rawXML: String?
     public init(id: String = UUID().uuidString, name: String = "", kind: Kind = .shape, frame: Rect? = nil, geometry: ShapeGeometry? = .rectangle, fill: Fill? = nil, stroke: Stroke? = nil, text: TextBody? = nil, image: Image? = nil, table: Table? = nil, children: [Element] = [], childFrame: Rect? = nil) {
-        self.id = id; self.name = name; self.kind = kind; self.isTextBox = false; self.frame = frame; self.rotation = 0; self.flipHorizontal = false; self.flipVertical = false; self.geometry = geometry; self.fill = fill; self.stroke = stroke; self.text = text; self.image = image; self.table = table; self.children = children; self.childFrame = childFrame; self.placeholder = nil; self.rawXML = nil; self.customGeometry = nil; self.effects = nil; self.chart = nil; self.diagram = nil
+        self.id = id; self.name = name; self.kind = kind; self.isTextBox = false; self.frame = frame; self.rotation = 0; self.isFlippedHorizontally = false; self.isFlippedVertically = false; self.geometry = geometry; self.fill = fill; self.stroke = stroke; self.text = text; self.image = image; self.table = table; self.children = children; self.childFrame = childFrame; self.placeholder = nil; self.rawXML = nil; self.customGeometry = nil; self.effects = nil; self.chart = nil; self.diagram = nil
     }
-    public var plainText: String { text?.plainText ?? table?.plainText ?? children.map(\.plainText).filter { !$0.isEmpty }.joined(separator: "\n") }
+    public var plainText: String { text?.plainText ?? equation?.lexicalText ?? table?.plainText ?? children.map(\.plainText).filter { !$0.isEmpty }.joined(separator: "\n") }
     package mutating func setRawXML(_ value: String) { rawXML = value }
 }
 /// 一枚のスライド。idはPresentation内で一意。既存スライドのidentityを維持する。
 public struct Slide: Sendable, Equatable, Codable, Identifiable {
+    private enum CodingKeys: String, CodingKey {
+        case sizeOverride
+        case media
+        case commentThreads
+        case transition
+        case timing
+        case comments
+        case nativeFeatures
+        case id
+        case name
+        case isHidden
+        case background
+        case elements
+        case notes
+        case layoutPath
+        case showsMasterShapes = "showMasterShapes"
+        case colorMapOverride
+        case usesMasterColorMapping
+        case backgroundReference
+        case themeOverridePath
+    }
+
+    /// 文書既定寸法と異なるページの直接寸法（pt）。
+    public var sizeOverride: Size?
+    public var media: [MediaReference]?
+    public var commentThreads: [CommentThread]?
     public var transition: SlideTransition?
     public var timing: SlideTiming?
     public var comments: [SlideComment]?
@@ -256,13 +351,13 @@ public struct Slide: Sendable, Equatable, Codable, Identifiable {
     public var notes: TextBody?
     /// 読み取ったレイアウトへのパッケージ参照。
     public var layoutPath: String?
-    public var showMasterShapes: Bool?
+    public var showsMasterShapes: Bool?
     public var colorMapOverride: [String: String]?
     public var usesMasterColorMapping: Bool?
     public var backgroundReference: StyleReference?
     public var themeOverridePath: String?
     public init(id: String = UUID().uuidString, name: String = "", elements: [Element] = [], notes: TextBody? = nil, background: Fill? = nil) {
-        self.id = id; self.name = name; self.elements = elements; self.notes = notes; self.background = background; self.isHidden = false; self.layoutPath = nil; self.showMasterShapes = nil; self.colorMapOverride = nil; self.usesMasterColorMapping = nil; self.backgroundReference = nil; self.themeOverridePath = nil
+        self.id = id; self.name = name; self.elements = elements; self.notes = notes; self.background = background; self.isHidden = false; self.layoutPath = nil; self.showsMasterShapes = nil; self.colorMapOverride = nil; self.usesMasterColorMapping = nil; self.backgroundReference = nil; self.themeOverridePath = nil
     }
     public var plainText: String { elements.map(\.plainText).filter { !$0.isEmpty }.joined(separator: "\n") }
     /// テキストボックスを末尾へ追加し、そのIDを返す。
@@ -275,7 +370,7 @@ public struct Slide: Sendable, Equatable, Codable, Identifiable {
     /// 始点・終点から線を配置する。矢印や破線はStrokeで指定する。
     @discardableResult public mutating func addLine(from start: (x: Double, y: Double), to end: (x: Double, y: Double), stroke: Stroke = .init(), geometry: ShapeGeometry = .straightConnector) -> String {
         var e = Element(kind: .connector, frame: .init(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x), height: abs(end.y - start.y)), geometry: geometry, stroke: stroke)
-        e.flipHorizontal = end.x < start.x; e.flipVertical = end.y < start.y; elements.append(e); return e.id
+        e.isFlippedHorizontally = end.x < start.x; e.isFlippedVertically = end.y < start.y; elements.append(e); return e.id
     }
     @discardableResult public mutating func addImage(_ image: Image, frame: Rect) -> String {
         let e = Element(kind: .image, frame: frame, geometry: nil, image: image); elements.append(e); return e.id
@@ -349,6 +444,7 @@ public struct Presentation: Sendable {
         try Task.checkCancellation(); return data
     }
     package mutating func setDefaultTextStyle(_ value: TextListStyle?) { defaultTextStyle = value }
+    package mutating func addReadWarning(_ value: SlideWarning) { readWarnings.append(value) }
     package mutating func preserve(_ value: Preservation, format: PresentationFormat, warnings: [SlideWarning], parts: [PackagePart], themes: [ThemePart]) { sourceThemes = themes; storage = value; sourceFormat = format; readWarnings = warnings; packageParts = parts }
 }
 /// パッケージパーツの検査情報。expandedSizeは宣言値でありメモリ使用量ではない。

@@ -8,16 +8,16 @@
 
 モデルの寸法はポイント、角度は度。グループ内はローカル座標です。
 Font/Color/Strokeは直接指定または生のテーマ参照。sourceThemesには原本テーマ定義を投影します。
-レイアウト・マスターの直接値はreadLayout / readMasterで取得でき、継承の自動適用は行いません。ColorValueは順序付き変換を保持し、ColorResolverは透明度系だけを初期解決します。
+レイアウト・マスターの直接値はreadLayout / readMasterで取得でき、直接モデルへ継承を自動適用しません。PPTXの明示的なresolveElementは限定継承と出典・診断を返します。ColorValueは順序付き変換を保持し、ColorResolverは透明度系だけを初期解決します。
 
-`encoded`/`write`は保存bytesと警告、`data`はbytesだけを返します。
+`write`は保存bytesと警告を返します。bytesは結果の`.data`から取り出します。
 PPTX/PPTMの未変更保存は原本bytes。編集保存は変更XMLを再直列化し、未変更パーツの圧縮済payloadを転写します。
 文字段落や表の再構成は未対応書式を落とす場合があるため警告し、strictは警告のある変更を拒否します。
 PPTMの形式変更、既存テーマ・layout変更、opaque要素編集、署名付き文書の編集は拒否します。
 
 ZIPとXMLの上限は解析量の上限で、プロセスメモリ予算ではありません。
 inspectと未変更パーツ転写は全CRC検証ではありません。展開するパーツでCRCを検査します。
-Swift 6.4 / Swift 6言語モード。同期codec契約に加え、read / inspect / data / encoded / write / assetのasync overloadを提供します。実処理は`@concurrent`で呼出元Actorから移り、Task localとキャンセルを引き継ぎます。FoundationのファイルI/O自体は同期です。
+Swift 6.4 / Swift 6言語モード。同期codec契約に加え、read / inspect / write / assetのasync overloadを提供します。実処理は`@concurrent`で呼出元Actorから移り、Task localとキャンセルを引き継ぎます。FoundationのファイルI/O自体は同期です。
 
 `readAll(contentsOf:options:maxConcurrentReads:)`はTaskGroupで同時数を制限し、入力順に返します。失敗・親キャンセルで残りをキャンセルし、終了を待ってthrowします。同時数は全体メモリ上限ではありません。
 キャンセルは展開・圧縮chunk、XML callback、スライド・要素境界で確認します。URL保存は一時fileへの分割書込境界とatomic確定直前に確認し、最後の確認後は成功し得ます。同名overloadの追加により、async文脈では既存呼出しにもawaitが必要になる場合があります。
@@ -33,16 +33,16 @@ Swift 6.4 / Swift 6言語モード。同期codec契約に加え、read / inspect
 
 ODPは読取専用で、基本文字・図形・画像・表・ノートを投影し原本を保持します。named/masterの継承書式はモデルへ埋めず、SlideODPの書式索引で限定解決します。保存・変換は未提供です。
 
-SlideReaderはsnapshotと不変索引を共有し、要求したスライドをSlideReadResultとして返します。PPTXは本文を選択解析します。ODPは索引作成時のXML全走査が必要です。AsyncSequenceはnext()ごとに1枚読み、先読みはしません。元URLの変更監視とfile-backed ZIPは未提供です。
+SlideReaderはsnapshotと不変索引を共有し、要求したスライドをSlideReadResultとして返します。PPTXは本文を選択解析します。ODPは索引作成時のXML全走査が必要です。AsyncSequenceはnext()ごとに1枚読み、先読みはしません。fileSlideReader(contentsOf:options:cacheBytes:)は通常ZIP fileのdescriptorを保持して必要entryを読み、元fileの変更・置換を拒否します。圧縮bytesのLRU cache上限は既定8MiBです。ODPのXML/KeynoteのIWA索引走査は必要で、展開済みモデルのheap上限は保証しません。
 
 
 ## ID編集と文書単位の検査
 
 editSlide(id:_:) / editElement(id:_:) / editText(_:)は仮の値を編集し、クロージャーの正常終了時だけ反映します。要素検索はgroup内も含みます。対象不在・重複ID・対象ID変更は拒否します。保存可否はwriterで別途検査します。
 
-transaction(options:_:)は複数の編集をwriterで検査し、成功時だけ反映してWriteResultを返します。strictの既定はtrue、ファイル保存は行いません。事前エンコードの時間とメモリが必要です。write/save/transactionの戻り値は警告を確認するか、明示的に`_ =`で破棄します。
+transaction(options:_:)は複数の編集をwriterで検査し、成功時だけ反映してWriteResultを返します。strictの既定はtrue、ファイル保存は行いません。事前エンコードの時間とメモリが必要です。write/transactionの戻り値は警告を確認するか、明示的に`_ =`で破棄します。
 
-Data入口のread/inspectとSlideReaderは明示formatを受けます。CodecSet.formats / contains / codec(for:)で登録を照会し、CodecSet.slideReaderのasync入口では索引構築も呼出元Actorから移します。SlideReader.assetとSavePlanを使うencodedにもasync overloadがあります。
+Data入口のread/inspectとSlideReaderは明示formatを受けます。CodecSet.formats / contains / codec(for:)で登録を照会し、CodecSet.slideReaderのasync入口では索引構築も呼出元Actorから移します。SlideReader.assetとSavePlanを使うwriteにもasync overloadがあります。
 
 URL保存は明示形式→元形式→PPTXで選び、拡張子によって変換しません。認識できる拡張子が出力形式と違う場合はoutputFormatMismatchで拒否し、保存先を変更しません。
 
@@ -53,9 +53,29 @@ TextSpacingはpointsとpercentage（100%=1）を区別します。ParagraphStyle
 
 TextRun.fieldはID/type/cacheとfield内の段落書式を保持します。TextFieldEvaluatorは明示された日時・locale・timeZone・slideNumberから評価し、未知typeや特殊暦はキャッシュと診断を返します。評価は原本を変更しません。保存する更新ではrun.textとfield.cachedTextを合わせます。firstSlideNumberとslideNumber(for:)は非表示も含む現在の文書順を使います。
 
-Color.value、Element.customGeometry / effects / chart / diagramは原本の追加投影です。未対応の色変換・guide・arc・高度な効果は保持と診断を優先します。chartの点列は疎なindex付きで、欠落値を0へ変えません。diagramは保存済みdrawingとデータ文字を返し、自動配置しません。chartとdiagramのkindはopaqueを維持します。
+Color.value、Element.customGeometry / effects / chart / diagramは原本の追加投影です。未知の色変換・高度な効果は保持と診断を優先します。DrawingMLの17演算guideと楕円弧はGeometryEvaluatorで評価できます。chartの点列は疎なindex付きで、欠落値を0へ変えません。diagramは保存済みdrawingとデータ文字を返し、自動配置しません。chartとdiagramのkindはopaqueを維持します。
 
 新しい投影を変更した保存と新規生成は拒否します。自由曲線や影を持つ既存要素の位置編集では原本XMLを維持します。master/layout読取には同期・async入口があり、原本と取り込み済みパーツを読みます。element IDはpart pathと組にして識別します。描画順・showMasterSp・色map・themeOverrideの適用と文字測定は呼出側の責務です。
 
 
 追加の読取投影として、Fillのgradient/pattern/picture、Image.crop、TableCell.borders、Slide.transition / timing / comments、Element.media / nativeFeaturesを提供します。ODPの型付きセル値とformulaも表示文字と分離します。追加投影の変更・新規保存は拒否します。詳しくは<doc:display-values>を参照してください。
+
+ODPの埋込MathMLはElement.equation、段落内はTextRun.equationから読みます。annotationは字句連結に含めません。custom-shapeのElement.enhancedGeometryはviewBox、modifier、guide式、16種類のパス命令と数値/参照を返します。未知命令は原本と診断へ残し、GeometryEvaluator.evaluateでguide/path/text area/handleの式を元の座標領域で評価できます。外部参照取得・保存は提供しません。
+
+
+## 現行Keynoteと暗号化文書
+
+SlideKeynoteはネイティブIWAを読取専用で扱い、文書順・直接位置・文字run/style・画像・group・notes・数値Bezierパス・BNC v5の表セル・chart grid・build/chunk・transitionの確認済みsubsetを投影します。高度属性と未知型はreadKeynoteObjectsで原本wireを取得できます。Keynoteは索引時にIWA全体を走査し、保存は提供しません。
+
+SlideDecryptは独立したproductです。password入口またはdecrypt関数がOOXML Agile/Standard、ODF AES、Keynote iwpv2 v2/f1を平文snapshotへ復号します。wrongPasswordとunsupportedEncryptionを区別し、KDF/サイズ/paddingを検査します。Agileは存在するHMAC、ODFはchecksumを検証します。Keynote stream末尾20bytesは未解釈で、全体認証を保証しません。復号snapshotの通常保存は平文であり、再暗号化は提供しません。
+
+
+## 追加書式・workbook・旧形式
+
+TextStyle.appearance / TextBody.appearanceは文字間隔pt、baseline比率、script token、caps/strike/underline、fill/outline/effect/3Dを返します。KeynoteのbaselinePointsも元のptで保持します。Element.spatialGeometryはODF scene/object/extrusion、model3DはDrawingMLモデル資源の内部pathまたは外部URLを返します。resolveElementで3Dの継承値と出所を取得できます。
+
+Chart.workbookは内部XLSXまたはReadOptions.workbookProviderが明示供給したbytesを読み、保存済みセル値・型・formula/sourceを返します。ChartData.pointsはchart cache、workbookPointsはworkbookから解決した値です。欠損cacheを0にせず、再計算しません。shared formula等の追加属性も原本に残します。
+
+Keynote TableCell.nativeFormulaはTSCE tokenとcacheを別々に保持し、結合セルはrowSpan/columnSpan/isMergeContinuationに投影します。ChartAxisはUFF/PreUFFの軸範囲・titleとnativePropertiesを返します。未解釈の複合属性はwire索引に残します。
+
+SlideLegacyを単独リンクすると旧PPT、Keynote2 XML/plain/gzip、旧Impress SXIを読めます。未知図形/書式は原本と警告に保持し、全旧版・暗号化・保存には対応しません。

@@ -14,7 +14,7 @@ private struct ContextCodec: PresentationCodec {
     func read(_ data: Data, options: ReadOptions) throws -> ReadResult {
         .init(presentation: Presentation(metadata: .init(title: TaskContext.marker, subject: String(Thread.isMainThread))))
     }
-    func inspect(_ data: Data, limits: PackageLimits) throws -> PresentationSummary { throw SlideError.invalidModel("test codec") }
+    func inspect(_ data: Data, options: InspectOptions) throws -> PresentationSummary { throw SlideError.invalidModel("test codec") }
     func write(_ presentation: Presentation, options: WriteOptions) throws -> WriteResult {
         if cancelDuringWrite { withUnsafeCurrentTask { $0?.cancel() } }
         return .init(data: Data("new contents".utf8))
@@ -39,13 +39,13 @@ private struct ContextCodec: PresentationCodec {
     let original = try fixture()
     var result = try await Presentation.read(original)
     #expect(result.warnings == result.presentation.readWarnings)
-    #expect(try await result.presentation.data() == original)
+    #expect(try await result.presentation.write().data == original)
     let overview = try await Presentation.inspect(original)
     #expect(overview.slideCount == result.presentation.slides.count)
     let image = try #require(result.presentation.slides[0].elements[5].image?.path)
     #expect(try await result.presentation.asset(at: image).starts(with: [137, 80, 78, 71]))
     result.presentation.metadata.title = "Async edit"
-    let encoded = try await result.presentation.encoded()
+    let encoded = try await result.presentation.write()
     #expect(try await Presentation.read(encoded.data).presentation.metadata.title == "Async edit")
 
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -90,6 +90,16 @@ private actor BatchProbe {
 
 private enum BatchFailure: Error { case expected }
 
+private actor CancellationGate {
+    private var cancelled = false
+    private var waiter: CheckedContinuation<Void, Never>?
+    func wait() async {
+        if cancelled { return }
+        await withCheckedContinuation { waiter = $0 }
+    }
+    func cancel() { cancelled = true; waiter?.resume(); waiter = nil }
+}
+
 @Test func batchFailureCancelsAndJoinsChildren() async {
     let probe = BatchProbe()
     await #expect(throws: BatchFailure.expected) {
@@ -97,7 +107,12 @@ private enum BatchFailure: Error { case expected }
             await probe.start()
             do {
                 if n == 0 { await probe.waitForThree(); throw BatchFailure.expected }
-                try await Task.sleep(for: .seconds(2))
+                // CPU負荷で2秒のsleepが失敗通知より先に終わる競合を避ける。
+                let gate = CancellationGate()
+                await withTaskCancellationHandler {
+                    await gate.wait()
+                } onCancel: { Task { await gate.cancel() } }
+                try Task.checkCancellation()
                 await probe.finish(); return n
             } catch {
                 await probe.finish(cancelled: error is CancellationError)
@@ -139,7 +154,7 @@ private enum BatchFailure: Error { case expected }
         let url = directory.appendingPathComponent(name)
         try fixture(name).write(to: url); urls.append(url)
     }
-    let results = try await Presentation.readAll(contentsOf: urls, options: .init(includeNotes: false), maxConcurrentReads: 2)
+    let results = try await Presentation.readAll(contentsOf: urls, options: .init(includesNotes: false), maxConcurrentReads: 2)
     #expect(results.map { $0.presentation.sourceFormat } == [.pptx, .pptm, .pptx])
     #expect(results.allSatisfy { $0.presentation.slides.allSatisfy { $0.notes == nil } })
     await #expect(throws: SlideError.self) {

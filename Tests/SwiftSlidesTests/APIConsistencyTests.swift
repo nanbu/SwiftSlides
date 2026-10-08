@@ -6,24 +6,24 @@ private struct APIProbeCodec: SlideReadingCodec {
     let format: PresentationFormat
     let marker: String
     func read(_ data: Data, options: ReadOptions) throws -> ReadResult {
-        .init(presentation: Presentation(metadata: .init(title: marker, subject: String(options.includeNotes))))
+        .init(presentation: Presentation(metadata: .init(title: marker, subject: String(options.includesNotes))))
     }
-    func inspect(_ data: Data, limits: PackageLimits) throws -> PresentationSummary {
+    func inspect(_ data: Data, options: InspectOptions) throws -> PresentationSummary {
         .init(format: format, size: .widescreen, slideCount: 1,
-              metadata: .init(title: marker, subject: String(limits.maxPartBytes), description: String(Thread.isMainThread)), parts: [])
+              metadata: .init(title: marker, subject: String(options.limits.maxPartBytes), description: String(Thread.isMainThread)), parts: [])
     }
     func write(_ presentation: Presentation, options: WriteOptions) throws -> WriteResult { .init(data: Data(marker.utf8)) }
     func openSlides(_ data: Data, options: ReadOptions) throws -> any PresentationSlideSource {
-        APIProbeSource(summary: try inspect(data, limits: options.limits), marker: marker, includeNotes: options.includeNotes)
+        APIProbeSource(summary: try inspect(data, options: .init(limits: options.limits)), marker: marker, includesNotes: options.includesNotes)
     }
 }
 
 private struct APIProbeSource: PresentationSlideSource {
     let summary: PresentationSummary
     let marker: String
-    let includeNotes: Bool
+    let includesNotes: Bool
     var slideDescriptors: [SlideDescriptor] { [.init(id: "probe", index: 0)] }
-    func slide(at index: Int) throws -> SlideReadResult { .init(slide: Slide(id: "probe", name: marker, notes: includeNotes ? .init("notes") : nil)) }
+    func slide(at index: Int) throws -> SlideReadResult { .init(slide: Slide(id: "probe", name: marker, notes: includesNotes ? .init("notes") : nil)) }
     func asset(at path: String) throws -> Data { Data(marker.utf8) }
 }
 
@@ -34,18 +34,18 @@ private struct APIProbeSource: PresentationSlideSource {
     let deck = Presentation()
     let plan = try original.planWrite(deck, as: .keynote)
     #expect(plan.canSave)
-    #expect(try original.encoded(deck, using: plan).data == Data("first".utf8))
-    #expect(throws: SlideError.stalePlan) { try changed.encoded(deck, using: plan) }
+    #expect(try original.write(deck, using: plan).data == Data("first".utf8))
+    #expect(throws: SlideError.stalePlan) { try changed.write(deck, using: plan) }
     let copy = original
-    #expect(try copy.encoded(deck, using: plan).data == Data("first".utf8))
+    #expect(try copy.write(deck, using: plan).data == Data("first".utf8))
     let sameChoice = CodecSet([try original.codec(for: .keynote)])
-    #expect(try sameChoice.encoded(deck, using: plan).data == Data("first".utf8))
+    #expect(try sameChoice.write(deck, using: plan).data == Data("first".utf8))
     let builtIn = CodecSet([.pptx]), builtInPlan = try builtIn.planWrite(deck)
-    #expect(try CodecSet.all.encoded(deck, using: builtInPlan).warnings.isEmpty)
+    #expect(try CodecSet.all.write(deck, using: builtInPlan).warnings.isEmpty)
     let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".key")
     let sentinel = Data("保持".utf8); try sentinel.write(to: url)
     defer { try? FileManager.default.removeItem(at: url) }
-    #expect(throws: SlideError.stalePlan) { try changed.save(deck, to: url, using: plan) }
+    #expect(throws: SlideError.stalePlan) { try changed.write(deck, to: url, using: plan) }
     #expect(try Data(contentsOf: url) == sentinel)
 }
 
@@ -57,29 +57,29 @@ private struct APIProbeSource: PresentationSlideSource {
     #expect(try set.codec(for: .keynote).format == .keynote)
     #expect(try set.read(Data(), format: .keynote).presentation.metadata.title == "last")
     #expect(CodecSet([]).formats.isEmpty)
-    #expect(throws: SlideError.noCodec(.odp)) { try set.codec(for: .odp) }
+    #expect(throws: SlideError.noCodec(for: .odp)) { try set.codec(for: .odp) }
 }
 
 @Test func explicitDataFormatOptionsAndReaderDispatchShareContract() throws {
     let set = CodecSet([Codec(APIProbeCodec(format: .keynote, marker: "explicit"))])
-    let options = ReadOptions(limits: .init(maxPartBytes: 73), includeNotes: false)
+    let options = ReadOptions(limits: .init(maxPartBytes: 73), includesNotes: false)
     #expect(try set.read(Data(), format: .keynote, options: options).presentation.metadata.subject == "false")
-    #expect(try set.inspect(Data(), format: .keynote, limits: options.limits).metadata.subject == "73")
+    #expect(try set.inspect(Data(), format: .keynote, options: .init(limits: options.limits)).metadata.subject == "73")
     let reader = try set.slideReader(Data(), format: .keynote, options: options)
     #expect(reader.summary.metadata.subject == "73")
     #expect(try reader.slide(id: "probe").slide.notes == nil)
     #expect(try reader.asset(at: "asset") == Data("explicit".utf8))
     #expect(throws: SlideError.slideNotFound(id: "missing")) { try reader.slide(id: "missing") }
     #expect(throws: SlideError.unknownFormat) { try set.inspect(Data()) }
-    #expect(throws: SlideError.noCodec(.keynote)) { try Presentation.read(Data(), format: .keynote) }
-    #expect(throws: SlideError.noCodec(.keynote)) { try Presentation.inspect(Data(), format: .keynote) }
-    #expect(throws: SlideError.noCodec(.keynote)) { try SlideReader(data: Data(), format: .keynote) }
+    #expect(throws: SlideError.self) { try Presentation.read(Data(), format: .keynote) }
+    #expect(throws: SlideError.self) { try Presentation.inspect(Data(), format: .keynote) }
+    #expect(throws: SlideError.self) { try SlideReader(data: Data(), format: .keynote) }
 
     let bytes = try fixture()
-    #expect(try Presentation(data: bytes, format: .pptx, options: .init(includeNotes: false)).slides[0].notes == nil)
+    #expect(try Presentation(data: bytes, format: .pptx, options: .init(includesNotes: false)).slides[0].notes == nil)
     #expect(try Presentation.read(bytes, format: .pptx).presentation.slides.count == 2)
     #expect(try Presentation.inspect(bytes, format: .pptx).slideCount == 2)
-    #expect(try SlideReader(data: bytes, format: .pptx, options: .init(includeNotes: false)).slide(id: "256").slide.notes == nil)
+    #expect(try SlideReader(data: bytes, format: .pptx, options: .init(includesNotes: false)).slide(id: "256").slide.notes == nil)
     #expect(throws: SlideError.self) { try CodecSet.all.slideReader(bytes, options: options) }
 }
 
@@ -99,7 +99,7 @@ private struct APIProbeSource: PresentationSlideSource {
         let error = SlideError.outputFormatMismatch(format: .pptx, fileExtension: ext)
         #expect(throws: error) { try deck.write(to: url) }
         #expect(throws: error) { try CodecSet.all.write(deck, to: url, as: .pptx) }
-        #expect(throws: error) { try deck.save(to: url, using: plan) }
+        #expect(throws: error) { try deck.write(to: url, using: plan) }
         #expect(try Data(contentsOf: url) == original)
     }
     let macro = try Presentation(data: fixture("macro.pptm"))
@@ -126,26 +126,26 @@ private struct APIProbeSource: PresentationSlideSource {
     #expect(opened.summary.metadata.description == "false")
     #endif
     let bytes = try fixture()
-    let reader = try await CodecSet.all.slideReader(bytes, format: .pptx, options: .init(includeNotes: false))
+    let reader = try await CodecSet.all.slideReader(bytes, format: .pptx, options: .init(includesNotes: false))
     #expect(try await reader.slide(id: "256").slide.notes == nil)
     let imagePath = try #require(try await reader.slide(id: "256").slide.elements[5].image?.path)
     #expect(try await reader.asset(at: imagePath) == fixture("fixture.png"))
     let deck = try await Presentation.read(bytes, format: .pptx).presentation
     #expect(try await Presentation.inspect(bytes, format: .pptx).slideCount == 2)
     let plan = try await deck.planWrite()
-    #expect(try await deck.encoded(using: plan).data == bytes)
-    #expect(try await CodecSet.all.encoded(deck, using: plan).data == bytes)
+    #expect(try await deck.write(using: plan).data == bytes)
+    #expect(try await CodecSet.all.write(deck, using: plan).data == bytes)
     var changed = deck; changed.metadata.title = "変更"
-    await #expect(throws: SlideError.stalePlan) { try await changed.encoded(using: plan) }
+    await #expect(throws: SlideError.stalePlan) { try await changed.write(using: plan) }
     let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".odp")
     let sentinel = Data("保持".utf8); try sentinel.write(to: url)
     defer { try? FileManager.default.removeItem(at: url) }
     await #expect(throws: SlideError.outputFormatMismatch(format: .pptx, fileExtension: "odp")) { try await deck.write(to: url) }
-    await #expect(throws: SlideError.outputFormatMismatch(format: .pptx, fileExtension: "odp")) { try await deck.save(to: url, using: plan) }
+    await #expect(throws: SlideError.outputFormatMismatch(format: .pptx, fileExtension: "odp")) { try await deck.write(to: url, using: plan) }
     #expect(try Data(contentsOf: url) == sentinel)
     let task = Task {
         withUnsafeCurrentTask { $0?.cancel() }
-        return try await deck.encoded(using: plan)
+        return try await deck.write(using: plan)
     }
     await #expect(throws: CancellationError.self) { try await task.value }
 }

@@ -95,7 +95,7 @@ UI側はoperationを保持し、不要になったら`operation.cancel()`を呼�
 ```swift
 let urls = [URL(filePath: "first.pptx"), URL(filePath: "second.pptm")]
 let results = try await Presentation.readAll(contentsOf: urls,
-    options: .init(includeNotes: false), maxConcurrentReads: 2)
+    options: .init(includesNotes: false), maxConcurrentReads: 2)
 for result in results {
     print(result.presentation.plainText, result.preservationSummary.warningCounts)
 }
@@ -150,7 +150,7 @@ deck.slides[0].elements[0].frame?.x = 60
 let plan = try deck.planWrite(options: .init(strict: true))
 print(plan.actions, plan.diagnostics, plan.changedExpandedBytes)
 if plan.canSave {
-    let saved = try deck.save(to: URL(filePath: "output.pptx"), using: plan)
+    let saved = try deck.write(to: URL(filePath: "output.pptx"), using: plan)
     print(saved.warnings)
 }
 ```
@@ -182,7 +182,7 @@ import SlideODP
 let codecs = CodecSet([.odp])
 let data = try Data(contentsOf: input)
 let result = try codecs.read(data)
-let index = try ODPCodec().styleIndex(data)
+let index = try ODPStyleIndex(data: data)
 let style = try index.resolve(name: "NamedStyle", family: "graphic")
 print(style.properties, style.origins, style.unresolved)
 ```
@@ -206,7 +206,7 @@ PPTXは要求した本文だけ解析します。ODPは開くときに単一XML�
 ## エンコード済Dataをatomic保存する
 
 ```swift
-let encoded = try presentation.encoded()
+let encoded = try presentation.write()
 try FileTarget(output).write(encoded.data)
 ```
 
@@ -254,7 +254,7 @@ let opened = try await codecs.read(bytes, format: .pptx)
 let summary = try await codecs.inspect(bytes, format: .pptx)
 let reader = try await codecs.slideReader(bytes, format: .pptx)
 let plan = try await codecs.planWrite(opened.presentation)
-let encoded = try await codecs.encoded(opened.presentation, using: plan)
+let encoded = try await codecs.write(opened.presentation, using: plan)
 print(summary.slideCount, reader.slideDescriptors, encoded.warnings)
 ```
 
@@ -300,4 +300,115 @@ Element.customGeometry / effects / chart / diagramは読取投影です。書換
 swift run swiftslides read-json source.pptx > reading.json
 ```
 
-スライド・要素の直接値、テーマ、診断を取得します。PPTX/PPTM/ODPの共通モデルの確認用で、原本パッケージ全体のJSON化ではありません。`Slide.transition` / `timing` / `comments`、`Element.media` / `nativeFeatures`、画像cropや追加の塗りも含みます。読み取り値を編集して保存できるとは限りません。
+スライド・要素の直接値、テーマ、診断を取得します。PPTX/PPTM/ODP/Keynoteの共通モデルの確認用で、原本パッケージ全体のJSON化ではありません。`Slide.transition` / `timing` / `comments`、`Element.media` / `nativeFeatures`、画像cropや追加の塗りも含みます。読み取り値を編集して保存できるとは限りません。
+
+## Keynoteと暗号文書を読む
+
+```swift
+import SlideDecrypt // SwiftSlidesも再export。復号が不要ならimport SwiftSlides。
+let result = try await Presentation.read(contentsOf: input, password: password)
+print(result.presentation.slides.count, result.diagnostics)
+let protection = Decryption.capabilities(for: .keynote)
+// 復号snapshotのPPTX保存は平文。再暗号化しない。
+```
+
+Keynoteの未知objectも読む場合:
+
+```swift
+let inventory = try presentation.readKeynoteObjects()
+for object in inventory.objects {
+    print(object.id, object.type, object.objectReferences, object.dataReferences)
+}
+print(inventory.dataReferences, inventory.diagnostics)
+```
+
+PPTXの実効継承を限定解決する場合:
+
+```swift
+let slide = presentation.slides[0]
+let resolved = try presentation.resolveElement(slideID: slide.id, elementID: slide.elements[0].id)
+print(resolved.element, resolved.origins, resolved.diagnostics)
+```
+
+原本の数式・3D・独自拡張等のXMLは`readSourceXML(at:)`、Keynoteの未知messageはinventoryのfields/rawDataで取得する。構造を取得できることと意味・外観を再現できることは異なる。ODP/Keynoteの保存は拒否する。
+
+PPTXのOMML数式と図形の直接3D属性を読む場合:
+
+```swift
+for element in presentation.slides[0].elements {
+    for paragraph in element.text?.paragraphs ?? [] {
+        for run in paragraph.runs {
+            if let equation = run.equation {
+                print(equation.root.kind, equation.root.children)
+                // 字句の連結。分数線や総和記号を補った線形式ではない。
+                print(equation.lexicalText)
+            }
+        }
+    }
+    if let scene = element.scene3D {
+        print(scene.cameraPreset, scene.cameraRotation as Any)
+    }
+    print(element.shape3D?.extrusionHeight as Any) // pt。省略はnil。
+}
+```
+
+数式を含む文字領域の再構成と3D投影の変更・新規保存は拒否する。位置や表幅の変更では原本を保持する。計算・描画は提供しない。実効値はresolveElementで解決する。
+
+ODPの埋込数式・高度図形を読む場合:
+
+```swift
+let odp = try Presentation(contentsOf: URL(fileURLWithPath: "fictional.odp"))
+for element in odp.slides[0].elements {
+    if let equation = element.equation {
+        print(equation.dialect, equation.root.children, equation.lexicalText)
+    }
+    if let geometry = element.enhancedGeometry {
+        print(geometry.viewBox as Any, geometry.modifiers as Any)
+        for command in geometry.path ?? [] {
+            print(command.kind, command.arguments) // 独自座標領域。guide/modifierは参照のまま。
+        }
+    }
+}
+```
+
+段落内のMathMLはTextRun.equationを参照する。annotationは原本に残し、字句連結には含めない。未知pathはnilと診断を返す。ODPは読取専用。geometryのguideはGeometryEvaluatorで評価できる。数式の再計算と保存は提供しない。
+
+## 読取cacheの予算と並列選択
+
+```swift
+let reader = try SlideReader(fileBackedURL: input, codecs: .all,
+                            cacheBudget: .init(totalBytes: 8 << 20))
+let slides = try await reader.readSlides(selection: .all, maxConcurrentReads: 2)
+print(slides.map(\.slide.id), reader.cacheStatistics as Any)
+```
+
+指定順を保ち、失敗時は残りの処理をキャンセルする。予算は圧縮bytesと展開索引の保持量であり、返却モデル・XML解析中の一時領域・プロセスRSSの上限ではない。ODPはページのXML範囲、KeynoteはIWA objectの位置を索引化する。file-backed Keynote directoryは原本の変更を検出すると拒否する。Flat ODPは通常の`Presentation(contentsOf:)`またはData入力で読める。
+
+## Workbook参照・guide・3D資源
+
+```swift
+let workbook = try WorkbookDataReader.readXLSX(workbookBytes)
+let values = try workbook.resolve("Sales", sheet: "Sheet1") // 名前付き範囲
+print(values.points, values.ranges as Any)
+let formula = try WorkbookFormulaResolver.translate("A1+$B$2", from: "C1", to: "C2")
+
+if let geometry = element.customGeometry {
+    let result = try GeometryEvaluator.evaluate(geometry, width: 200, height: 100)
+    print(result.guides, result.paths) // 図形固有の座標・正確な楕円弧
+}
+if let reference = element.model3D {
+    let model = try presentation.readModel3D(reference)
+    print(model.nodes, try model.materials, model.warnings)
+    if !model.accessors.isEmpty { print(try model.values(forAccessor: 0)) }
+}
+```
+
+Workbookは保存値を読む。名前付き範囲、union/intersection、3D sheet range、共有数式の参照移動を解釈し、式の再計算は行わない。glTF/GLBは標準scene/TRS・accessor・PBR材質・skin・animation指示を読む。未知extensionは原本と診断に保持する。外部bufferは明示providerから供給し、暗黙のネットワーク取得は行わない。描画・再生は含まない。
+
+ODPの2D transformは既定radian、明示deg/rad/gradを優先する。古いODF仕様のdegree運用を読む場合は`ReadOptions.odfTransformAngleUnit = .degrees`を指定する。3D transformの角度はdegree。独自geometry engineは`ReadOptions.geometryProvider`から確認済みの解釈を供給し、未供給なら原本と診断を返す。
+
+## 保存計画を使う場面
+
+通常の保存はwriteだけで完結します。planWriteは、保存確認画面で変更・保持・削除パーツと警告を表示する場合の任意の入口です。
+PowerPoint形式に必須ではなく、軽量な事前検査でもありません。計画作成時に出力をエンコードし、計画保持中はそのDataも保持します。
+確認後のwrite(using:)では出力を再利用し、モデル等が変わっていればstalePlanで拒否します。ディスク容量や書込権限は保存時の検査になります。

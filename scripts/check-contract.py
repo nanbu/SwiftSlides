@@ -13,14 +13,14 @@ def audit(rows,readme,tests,manifest):
  if not match or match.group(1)!=rendered(rows): errors.append('support table differs from canonical ledger')
  for row in rows:
   if not re.search(r'func\s+'+re.escape(row['test'])+r'\s*\(',tests): errors.append('missing regression test: '+row['test'])
- for module in ['SlideCore','SlidePPTX','SlideODP','SwiftSlides']:
+ for module in ['SlideCore','SlidePPTX','SlideODP','SlideKeynote','SlideLegacy','SlideDecrypt','SwiftSlides']:
   if '.library(name: "'+module+'"' not in manifest: errors.append('missing public product: '+module)
  return errors
 
 def self_test():
  row={'feature':'Feature','read':'対応','write':'対応','boundary':'API','test':'testOne'}
  table='<!-- contract:start -->\n'+rendered([row])+'\n<!-- contract:end -->'
- manifest=' '.join('.library(name: "'+m+'"' for m in ['SlideCore','SlidePPTX','SlideODP','SwiftSlides'])
+ manifest=' '.join('.library(name: "'+m+'"' for m in ['SlideCore','SlidePPTX','SlideODP','SlideKeynote','SlideLegacy','SlideDecrypt','SwiftSlides'])
  if audit([row],table,'func testOne()',manifest): raise RuntimeError('valid contract rejected')
  for arguments,expected in [(([],table,'func testOne()',manifest),'empty'),(([row],table.replace('API','changed'),'func testOne()',manifest),'table'),(([row],table,'',manifest),'test'),(([row],table,'func testOne()',''),'product'),(([row,row],table,'func testOne()',manifest),'duplicate')]:
   if not any(expected in e for e in audit(*arguments)): raise RuntimeError('negative control missed: '+expected)

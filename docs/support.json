@@ -112,17 +112,10 @@
     "test": "signedPackageOnlyNoOpAllowed"
   },
   {
-    "feature": "旧PPT・暗号化",
-    "read": "拒否",
-    "write": "未対応",
-    "boundary": "OLEの種別詳細判定なし",
-    "test": "legacyAndUnknownRefused"
-  },
-  {
     "feature": "ODP読取専用",
-    "read": "ODF 1.3/1.4の基本値・原本保持",
+    "read": "ODF 1.2/1.3/1.4・Flat ODPの基本値・原本保持",
     "write": "新規・編集・変換を拒否",
-    "boundary": "SlideODP、1.2は未検証、未知要素は診断",
+    "boundary": "SlideODP、未知要素は診断、実アプリ確認範囲は検証記録参照",
     "test": "odpBasicReadPreservesOriginalAndSeparatesInheritedValues"
   },
   {
@@ -218,10 +211,10 @@
   },
   {
     "feature": "Keynote",
-    "read": "公開codec未提供、wire限定試作",
-    "write": "試作のみ・同長文字1field",
-    "boundary": "15.4で再包装・局所編集・再保存を確認",
-    "test": "keynoteMarkerIsNotMisidentified"
+    "read": "ネイティブIWAの基本値・全wire索引",
+    "write": "読取専用、保存を拒否",
+    "boundary": "SlideKeynote、確認済みtype/fieldのみ投影、未知objectは診断",
+    "test": "nativeKeynoteOrderUnknownsAndAssets"
   },
   {
     "feature": "単位付き行間・段落余白",
@@ -281,10 +274,10 @@
   },
   {
     "feature": "コメント",
-    "read": "従来形式の本文・作者・日時・位置",
+    "read": "従来コメント・新thread/reply・作者・位置",
     "write": "原本を保持・投影変更を拒否",
-    "boundary": "新形式はNativeFeatureDescriptorと診断",
-    "test": "transitionsTimingMediaAndComments"
+    "boundary": "Slide.comments / commentThreads、anchor/taskはSourceXMLで保持",
+    "test": "modernCommentsAndExternalVideoRetainDescriptors"
   },
   {
     "feature": "ODPセルの型付き値・式",
@@ -299,5 +292,215 @@
     "write": "対象外",
     "boundary": "source master/layoutは読取呼出ごとの予算",
     "test": "pptxTableBudgetAppliesAcrossSlidesAndSelectedReader"
+  },
+  {
+    "feature": "PPTX継承style",
+    "read": "placeholder・theme matrix・フォントと出典",
+    "write": "読取結果のみ、原本に適用しない",
+    "boundary": "resolveElement、曖昧/未知参照は診断",
+    "test": "placeholderAndThemeStyleResolutionHasProvenance"
+  },
+  {
+    "feature": "ChartML追加データ",
+    "read": "scatter/bubble・多段カテゴリ・書式構造",
+    "write": "原本保持・投影変更を拒否",
+    "boundary": "疎なindexとlevelを保持、再計算/描画なし",
+    "test": "scatterBubbleAndMultilevelChartStructures"
+  },
+  {
+    "feature": "ODP高度構造",
+    "read": "時間木・media・annotation・原本geometry",
+    "write": "未提供",
+    "boundary": "時間木・media・annotationを読取、3D等は原本構造と診断",
+    "test": "odpTimingMediaAnnotationsAndCustomGeometryAreReadable"
+  },
+  {
+    "feature": "原本XMLの構造読取",
+    "read": "全保持XMLのnamespace・属性・mixed content",
+    "write": "原本の変更APIなし",
+    "boundary": "readSourceXML、構造取得と意味解釈を区別",
+    "test": "sourceXMLRetainsNamespacesAndMixedOrder"
+  },
+  {
+    "feature": "OOXML Agile復号",
+    "read": "AES128/192/256、SHA1/256/512",
+    "write": "再暗号化なし、通常保存は平文",
+    "boundary": "SlideDecrypt、password/サイズ/HMAC検査",
+    "test": "agilePasswordsAndIntegrity"
+  },
+  {
+    "feature": "OOXML Standard復号",
+    "read": "AES128/192/256 ECB、SHA1",
+    "write": "再暗号化なし、通常保存は平文",
+    "boundary": "固定50,000回KDF、RC4/IRMは拒否",
+    "test": "standardPasswordsAndHeaderValidation"
+  },
+  {
+    "feature": "ODF AES復号",
+    "read": "AES-CBC/PBKDF2、checksum検査",
+    "write": "再暗号化なし、ODP保存なし",
+    "boundary": "SlideDecrypt、Blowfishは未対応",
+    "test": "odpPasswordsAndPlaintextSnapshot"
+  },
+  {
+    "feature": "Keynote復号",
+    "read": "iwpv2 v2/f1、PBKDF2SHA1/AES128",
+    "write": "再暗号化なし、Keynote保存なし",
+    "boundary": "末尾20bytes未解釈、現行15.4の架空文書で検証",
+    "test": "keynotePasswordVerifierPaddingAndUnknownProtection"
+  },
+  {
+    "feature": "Keynoteの文字書式・表・chart・build",
+    "read": "UTF16 run/style・v5セル・疎なgrid・build/chunk・transition",
+    "write": "読取専用、保存を拒否",
+    "boundary": "式token/結合/軸の確認済みsubset、未知属性はwire索引",
+    "test": "keynoteNativeStylesTablesChartsAndBuilds"
+  },
+  {
+    "feature": "ODP埋込chart",
+    "read": "local-table/range・疎なseries・軸/全XML構造",
+    "write": "読取専用、保存を拒否",
+    "boundary": "単純A1範囲、外部データ・計算・描画なし",
+    "test": "odpEmbeddedChartLocalTableAndSparseRanges"
+  },
+  {
+    "feature": "PPTX数式構造",
+    "read": "OMMLの型・引数境界・段落内順序",
+    "write": "原本保持・文字領域の再構成を拒否",
+    "boundary": "TextRun.equation、計算/線形式化/描画なし",
+    "test": "ommlStructureAndInlineOrder"
+  },
+  {
+    "feature": "PPTX図形の3D属性",
+    "read": "直接camera/light・押出し・bevel・色",
+    "write": "原本保持・投影変更/新規生成を拒否",
+    "boundary": "Element.scene3D / shape3D、直接値と明示継承、描画なし",
+    "test": "scene3DDirectValuesAndOmissions"
+  },
+  {
+    "feature": "ODP MathML数式",
+    "read": "内部object・inline・token/引数順・annotation原本",
+    "write": "未提供",
+    "boundary": "Element.equation / TextRun.equation、計算/描画なし",
+    "test": "odpMathMLStructureSourcesAndInlineOrder"
+  },
+  {
+    "feature": "ODP高度図形",
+    "read": "16命令・viewBox・modifier/guide・text area",
+    "write": "未提供",
+    "boundary": "EnhancedGeometryとGeometryEvaluator、独自座標評価、未知pathは未解決",
+    "test": "odpEnhancedGeometryOperandsAndCommands"
+  },
+  {
+    "feature": "追加文字外観とDrawingML効果",
+    "read": "間隔・baseline・caps・strike・underline・効果tree",
+    "write": "未提供",
+    "boundary": "TextAppearance/DrawingEffect、未知属性は原本",
+    "test": "pptxAdditionalEffectsAndTextAppearance"
+  },
+  {
+    "feature": "ODP立体図形",
+    "read": "scene/cube/light・vector/matrix・extrusion属性",
+    "write": "未提供",
+    "boundary": "SpatialGeometry.evaluated、3D変形・cube/ellipsoid・断面と原本、描画なし",
+    "test": "odfSpatialSceneAndExtrusion"
+  },
+  {
+    "feature": "埋込・外部workbook",
+    "read": "保存済み値・式・shared strings・疎なA1範囲",
+    "write": "未提供",
+    "boundary": "呼出側bytes供給、cacheと別値、再計算なし",
+    "test": "embeddedWorkbookAndExplicitExternalProvider"
+  },
+  {
+    "feature": "Keynote式・結合・chart軸",
+    "read": "TSCE token/cache・merge・UFF/PreUFF軸",
+    "write": "未提供",
+    "boundary": "確認済みUID/handle/入れ子、schema拡張、原本と診断、再計算なし",
+    "test": "keynoteFormulaMergeAndAxes"
+  },
+  {
+    "feature": "file-backed reader",
+    "read": "ZIP/Keynote directory・位置索引・LRU・変更検出",
+    "write": "未提供",
+    "boundary": "圧縮/展開索引の合計cache予算、モデル/一時領域とRSSは別",
+    "test": "fileBackedSelectionAndChangeDetection"
+  },
+  {
+    "feature": "旧PPT",
+    "read": "CFB/live persist・スライド順・寸法・本文",
+    "write": "未提供",
+    "boundary": "SlideLegacy、旧暗号/形状意味の全解釈なし",
+    "test": "legacyPPTLivePersistOrderAndProducerText"
+  },
+  {
+    "feature": "旧Keynote XML・SXI",
+    "read": "基本寸法/順序/本文・XML原本",
+    "write": "未提供",
+    "boundary": "SlideLegacy、Keynote2/plain/gzipと旧office XML",
+    "test": "legacyXMLReadOnlyCodecs"
+  },
+  {
+    "feature": "DrawingML式・円弧評価",
+    "read": "標準17演算・組込変数・調整値・楕円弧",
+    "write": "未提供",
+    "boundary": "GeometryEvaluator、宣言順・計算予算・非有限拒否",
+    "test": "drawingMLGuideOperatorsAndEllipticalArc"
+  },
+  {
+    "feature": "Workbook複合参照",
+    "read": "名前scope・union/intersection・3D・共有式",
+    "write": "未提供",
+    "boundary": "保存値のみ、再計算・旧XLSなし",
+    "test": "workbookNamesUnionIntersectionAndSharedFormula"
+  },
+  {
+    "feature": "Content MathML",
+    "read": "apply/bind・演算子・変数・数値成分",
+    "write": "未提供",
+    "boundary": "EquationNode、未知辞書/拡張と原本保持",
+    "test": "contentMathMLBindingsAndNumericComponents"
+  },
+  {
+    "feature": "ODP変形・text-path",
+    "read": "順序付き2D行列・角度単位・配置属性",
+    "write": "未提供",
+    "boundary": "文字計測なし、独自engineは明示provider",
+    "test": "odfTransformOrderAnglesAndTextPath"
+  },
+  {
+    "feature": "glTF/GLB資源",
+    "read": "場面/mesh/accessor・sparse・PBR・skin/animation",
+    "write": "未提供",
+    "boundary": "外部bufferはprovider、必須extensionは診断、再生なし",
+    "test": "model3DBuffersSparseSceneAndMaterial"
+  },
+  {
+    "feature": "Keynote複合参照・schema",
+    "read": "UID/handle/入れ子・型付き属性・参照inventory",
+    "write": "未提供",
+    "boundary": "未知bytesを推測せず、明示schemaだけで拡張",
+    "test": "keynoteNestedReferencesSchemasAndInventory"
+  },
+  {
+    "feature": "文書内並列読取・directory",
+    "read": "選択順・同時数上限・不変索引・変更拒否",
+    "write": "未提供",
+    "boundary": "readSlidesとfileBackedURL、返却結果は呼出側所有",
+    "test": "indexedParallelAndDirectoryReading"
+  },
+  {
+    "feature": "Flat ODP・ページ別寸法",
+    "read": "office:document・binary-data・sizeOverride",
+    "write": "未提供",
+    "boundary": "原本flat.xmlを取得可能、保存は拒否",
+    "test": "flatODPAndDifferentPageSizes"
+  },
+  {
+    "feature": "chart立体表示・軸詳細",
+    "read": "3D view・壁/床・刻み・交点・反転",
+    "write": "未提供",
+    "boundary": "ChartView3D/ChartSurface/ChartAxisScale、描画なし",
+    "test": "chart3DAndAxisDetails"
   }
 ]

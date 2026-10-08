@@ -450,6 +450,486 @@
       "fixtureSHA256": "68566f641a4c7b145c62d2931b475fa62cbde889bc0e0cd7bd39e2b51fe0707c",
       "test": "modernCommentsAndExternalVideoRetainDescriptors",
       "scope": "fixtureの音声参照を外部動画へ、新comments relationship URIと根要素へ置換。外部URLを取得せず参照を投影、新コメントXMLと診断を保持。"
+    },
+    {
+      "id": "E46",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "native-synthetic.keynote.zip",
+      "fixtureSHA256": "a9f0130b4f47a14113c4694ae6a546630f5484e4721f214ab602b533092ad861",
+      "test": "nativeKeynoteOrderUnknownsAndAssets",
+      "scope": "独立生成した架空IWAの文書順・非表示・位置/回転・文字・画像・notes・未知wire bytesを比較。現行アプリの全機能互換性を含まない。"
+    },
+    {
+      "id": "E47",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "reading-models.pptx",
+      "fixtureSHA256": "101f63e92c97fcf51aad5922d98483a2c6c7c58d7dae78cdec9533082818f9d4",
+      "test": "placeholderAndThemeStyleResolutionHasProvenance",
+      "scope": "fixtureにplaceholderとstyle matrix参照を追加。layout frame/transform/custom geometry、theme fill/line/font/effectとphClr、空effectLstによる継承停止、段落既定と出典を照合。描画なし。 範囲外の上位参照は継承元の値で埋めず未解決にする。"
+    },
+    {
+      "id": "E48",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "reading-models.pptx",
+      "fixtureSHA256": "101f63e92c97fcf51aad5922d98483a2c6c7c58d7dae78cdec9533082818f9d4",
+      "test": "scatterBubbleAndMultilevelChartStructures",
+      "scope": "fixtureをbubbleと疎な多段カテゴリへ加工しx/y/bubbleSize、levelごとのpoint index、trendline構造を検査。"
+    },
+    {
+      "id": "E49",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "advanced-reading.pptx",
+      "fixtureSHA256": "68566f641a4c7b145c62d2931b475fa62cbde889bc0e0cd7bd39e2b51fe0707c",
+      "test": "modernCommentsAndExternalVideoRetainDescriptors",
+      "scope": "架空の新コメントtxBodyと作者未解決診断、動画URIを検査。クラウド連携なし。"
+    },
+    {
+      "id": "E50",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "styles.odp",
+      "fixtureSHA256": "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0",
+      "test": "odpTimingMediaAnnotationsAndCustomGeometryAreReadable",
+      "scope": "架空のSMIL時間構造・audio URI・annotation・enhanced geometryを追加し値と原本構造を比較。再生/geometry評価なし。"
+    },
+    {
+      "id": "E51",
+      "format": "pptx",
+      "profile": "ooxmlAgile",
+      "operation": "read",
+      "fixture": "encrypted-agile-128.pptx",
+      "fixtureSHA256": "d22c6c11b8b907ffb3f168f5b6cda2b0146a8de8679990a47c3b52f821e00325",
+      "test": "agilePasswordsAndIntegrity",
+      "scope": "Python cryptography/hashlibで独立生成。Unicode password、平文byte一致、誤password/破損/上限拒否。StandardはHMACなし。"
+    },
+    {
+      "id": "E52",
+      "format": "pptx",
+      "profile": "ooxmlAgile",
+      "operation": "read",
+      "fixture": "encrypted-agile-192.pptx",
+      "fixtureSHA256": "16c071bd930c02e9511ceeb76118bb8669b1cd26c3ae82368cc1718612c5bcd6",
+      "test": "agilePasswordsAndIntegrity",
+      "scope": "Python cryptography/hashlibで独立生成。Unicode password、平文byte一致、誤password/破損/上限拒否。StandardはHMACなし。"
+    },
+    {
+      "id": "E53",
+      "format": "pptx",
+      "profile": "ooxmlAgile",
+      "operation": "read",
+      "fixture": "encrypted-agile-256.pptx",
+      "fixtureSHA256": "9e4d96e5a7e6ebfb8382e85b0a037b223ff0a6b2205690801841d178cf307399",
+      "test": "agilePasswordsAndIntegrity",
+      "scope": "Python cryptography/hashlibで独立生成。Unicode password、平文byte一致、誤password/破損/上限拒否。StandardはHMACなし。"
+    },
+    {
+      "id": "E54",
+      "format": "pptx",
+      "profile": "ooxmlStandard",
+      "operation": "read",
+      "fixture": "encrypted-standard-128.pptx",
+      "fixtureSHA256": "d0ccca9b46eb7d2cd42e37a3ae1b3b5c9b4b35a823bb6dca382264a9500a36d9",
+      "test": "standardPasswordsAndHeaderValidation",
+      "scope": "Python cryptography/hashlibで独立生成。Unicode password、平文byte一致、誤password/破損/上限拒否。StandardはHMACなし。"
+    },
+    {
+      "id": "E55",
+      "format": "pptx",
+      "profile": "ooxmlStandard",
+      "operation": "read",
+      "fixture": "encrypted-standard-192.pptx",
+      "fixtureSHA256": "a03eda8518beaca30b38fe5eb069d9c8fc1a444c49cd4f8503c9acc8729b925c",
+      "test": "standardPasswordsAndHeaderValidation",
+      "scope": "Python cryptography/hashlibで独立生成。Unicode password、平文byte一致、誤password/破損/上限拒否。StandardはHMACなし。"
+    },
+    {
+      "id": "E56",
+      "format": "pptx",
+      "profile": "ooxmlStandard",
+      "operation": "read",
+      "fixture": "encrypted-standard-256.pptx",
+      "fixtureSHA256": "38a49318f2b54533fbedc8574ae9f224ffe3fe1260359cd3f8c98abfb5daf4c7",
+      "test": "standardPasswordsAndHeaderValidation",
+      "scope": "Python cryptography/hashlibで独立生成。Unicode password、平文byte一致、誤password/破損/上限拒否。StandardはHMACなし。"
+    },
+    {
+      "id": "E57",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "encrypted-aes-128.odp",
+      "fixtureSHA256": "36b62ebc54f9bebe8da1be2618040f44bcb8e1e46c0ebfcd375ac5965e1962cf",
+      "test": "odpPasswordsAndPlaintextSnapshot",
+      "scope": "Python cryptographyで独立AES/PBKDF2暗号化。復号content.xml byte一致、誤password、KDF不正拒否。"
+    },
+    {
+      "id": "E58",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "encrypted-aes-256.odp",
+      "fixtureSHA256": "ef364993c8e958af093b28309d2f3cff124f1c7e36aadfd2ddeb2ad16bebab21",
+      "test": "odpPasswordsAndPlaintextSnapshot",
+      "scope": "Python cryptographyで独立AES/PBKDF2暗号化。復号content.xml byte一致、誤password、KDF不正拒否。"
+    },
+    {
+      "id": "E59",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "encrypted-native.keynote.zip",
+      "fixtureSHA256": "ef48f33bde382f137d749b604ba5cf3acfbc3e4abe522c8a8119ec7e08ccb10c",
+      "test": "keynotePasswordVerifierPaddingAndUnknownProtection",
+      "scope": "独立PBKDF2/AES生成。password検証、padding/版の拒否、IWA索引読取。末尾20bytesの認証を含まない。"
+    },
+    {
+      "id": "E60",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "native-advanced.keynote.zip",
+      "fixtureSHA256": "4ca769ba86e99a86a8d43bee274f1bb5298b9841a6a08b46e0cec7f09e2231de",
+      "test": "keynoteNativeStylesTablesChartsAndBuilds",
+      "scope": "独立した架空wireのUTF16 run、段落/文字style、BNC v5表セル、疎なchart grid、transitionとbuild/chunkを比較。式・結合・軸・高度書式・固有効果の全意味/外観は含まない。"
+    },
+    {
+      "id": "E61",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "stored.pptx",
+      "fixtureSHA256": "86c64392612d567f68ab1fc60a82af3417517fdaf39e2255379a632a7b75b769",
+      "test": "modernCommentAuthorsRepliesAndTaskAnchors",
+      "scope": "架空作者/thread/reply/task/shape anchorを追加して本文・太字・位置・解決状態を比較。重複identityと投影変更保存を拒否。mentionsの意味評価は含まない。"
+    },
+    {
+      "id": "E62",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "styles.odp",
+      "fixtureSHA256": "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0",
+      "test": "odpEmbeddedChartLocalTableAndSparseRanges",
+      "scope": "架空埋込chartのlocal-tableと単純A1 range、series名・categories・数値cache・疎なindex・axis構造を確認。外部table rangeは未解決診断。高度書式/全chart型/計算/外観は含まない。"
+    },
+    {
+      "id": "E63",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "native-paths.keynote.zip",
+      "fixtureSHA256": "fce0144053e33e725ae30d40a3d3548e1f6c705b9671b0586242bf9f77351516",
+      "test": "keynoteNativeBezierPathsAndConnectors",
+      "scope": "独立した架空TSP.Pathのmove/line/quadratic/cubic/close、naturalSize、flip、Shape/ConnectionLineを比較。点数不正拒否、未知命令のwire保持。parameterized/editable pathと接続UUIDの意味評価は含まない。"
+    },
+    {
+      "id": "math-transitional",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "math-3d.pptx",
+      "fixtureSHA256": "20570d20c9feabd191e50373fbe0549118ae7412d6233f097fcc6481555598ce",
+      "test": "ommlStructureAndInlineOrder",
+      "scope": "合成OMMLの分数・根号・上添字・総和・行列の引数境界、段落内順序、Choice選択、未選択分岐の原本保持。表/notes/layoutでも照合。計算・描画・実アプリは未検証。"
+    },
+    {
+      "id": "scene-transitional",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "math-3d.pptx",
+      "fixtureSHA256": "20570d20c9feabd191e50373fbe0549118ae7412d6233f097fcc6481555598ce",
+      "test": "scene3DDirectValuesAndOmissions",
+      "scope": "合成DrawingMLの直接camera/light回転、FOV/zoom、深さ・押出し・bevel・色と省略値。実効継承・文字/chart/モデル3Dと実アプリは未検証。"
+    },
+    {
+      "id": "math-3d-preserve-transitional",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "preserve",
+      "fixture": "math-3d.pptx",
+      "fixtureSHA256": "20570d20c9feabd191e50373fbe0549118ae7412d6233f097fcc6481555598ce",
+      "test": "mathAnd3DPreservePositionEditsAndRejectDestructiveRewrites",
+      "scope": "未変更bytes一致、位置と表幅の変更で原本数式/3Dを保持。文字・notes・セル・表の再構成と投影変更/新規生成を拒否。"
+    },
+    {
+      "id": "math-strict",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "math-3d-strict.pptx",
+      "fixtureSHA256": "91b1c1a631ed0b476a52fdffe20c6f6b45f4bec62fc63c555253c1a390452495",
+      "test": "ommlStructureAndInlineOrder",
+      "scope": "合成OMMLの分数・根号・上添字・総和・行列の引数境界、段落内順序、Choice選択、未選択分岐の原本保持。表/notes/layoutでも照合。計算・描画・実アプリは未検証。"
+    },
+    {
+      "id": "scene-strict",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "math-3d-strict.pptx",
+      "fixtureSHA256": "91b1c1a631ed0b476a52fdffe20c6f6b45f4bec62fc63c555253c1a390452495",
+      "test": "scene3DDirectValuesAndOmissions",
+      "scope": "合成DrawingMLの直接camera/light回転、FOV/zoom、深さ・押出し・bevel・色と省略値。実効継承・文字/chart/モデル3Dと実アプリは未検証。"
+    },
+    {
+      "id": "math-3d-preserve-strict",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "preserve",
+      "fixture": "math-3d-strict.pptx",
+      "fixtureSHA256": "91b1c1a631ed0b476a52fdffe20c6f6b45f4bec62fc63c555253c1a390452495",
+      "test": "mathAnd3DPreservePositionEditsAndRejectDestructiveRewrites",
+      "scope": "未変更bytes一致、位置と表幅の変更で原本数式/3Dを保持。文字・notes・セル・表の再構成と投影変更/新規生成を拒否。"
+    },
+    {
+      "id": "odp-enhanced-geometry",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "odpEnhancedGeometryOperandsAndCommands",
+      "scope": "ODF 1.3合成fixtureの16命令・数値/modifier/guide・viewBox・text area・鏡像・handle原本。未知/破損/予算は別回帰検査。guide評価・3D・実アプリは未検証。"
+    },
+    {
+      "id": "odp-mathml",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "odpMathMLStructureSourcesAndInlineOrder",
+      "scope": "ODF 1.3合成fixtureのMathML token・分数/根号/添字/上下限/行列・annotation保持、内部object・inline・preview。Content MathML/計算/描画・実アプリは未検証。"
+    },
+    {
+      "id": "R72",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "stored.pptx",
+      "fixtureSHA256": "86c64392612d567f68ab1fc60a82af3417517fdaf39e2255379a632a7b75b769",
+      "test": "pptxAdditionalEffectsAndTextAppearance",
+      "scope": "glow/innerShadow/softEdgeと文字間隔・baseline・caps・strike・underline・kerning、JSON/原本保持/編集拒否。"
+    },
+    {
+      "id": "R73",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "math-3d.pptx",
+      "fixtureSHA256": "20570d20c9feabd191e50373fbe0549118ae7412d6233f097fcc6481555598ce",
+      "test": "inherited3DAndModelResourceReferences",
+      "scope": "layout placeholderのscene/shape3D継承・出典とmodel3d内部参照のasset bytes。"
+    },
+    {
+      "id": "R74",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "stored.pptx",
+      "fixtureSHA256": "86c64392612d567f68ab1fc60a82af3417517fdaf39e2255379a632a7b75b769",
+      "test": "embeddedWorkbookAndExplicitExternalProvider",
+      "scope": "埋込XLSXの保存済み値、外部URL未取得、呼出側の明示bytes供給。"
+    },
+    {
+      "id": "R75",
+      "format": "odp",
+      "profile": "odf12",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "odpSemanticReadingAcrossDeclaredVersions",
+      "scope": "versionごとの数式/path読取。1.4は新handle-position-x/yへ変更して比較。公式RNGの独立検査はverification.mdに記録。"
+    },
+    {
+      "id": "R76",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "odpSemanticReadingAcrossDeclaredVersions",
+      "scope": "versionごとの数式/path読取。1.4は新handle-position-x/yへ変更して比較。公式RNGの独立検査はverification.mdに記録。"
+    },
+    {
+      "id": "R77",
+      "format": "odp",
+      "profile": "odf14",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "odpSemanticReadingAcrossDeclaredVersions",
+      "scope": "versionごとの数式/path読取。1.4は新handle-position-x/yへ変更して比較。公式RNGの独立検査はverification.mdに記録。"
+    },
+    {
+      "id": "R78",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "odfSpatialSceneAndExtrusion",
+      "scope": "dr3d scene/cube/light・vector・matrixとenhanced extrusion flag。"
+    },
+    {
+      "id": "R79",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "remaining-native.keynote.zip",
+      "fixtureSHA256": "995d14e18e841d09011839535530278d044ec45245cf8f4ad2fc2683e6752aa7",
+      "test": "keynoteFormulaMergeAndAxes",
+      "scope": "式token/保存済み5、2セル結合、軸min/max/title/grid。現行UFFと旧PreUFF型、親styleの継承を比較。"
+    },
+    {
+      "id": "R80",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "remaining-preuff.keynote.zip",
+      "fixtureSHA256": "2993a7e41d15f64bc3209948b3505f5c074b1f36dc095f3e4fb8051ad92c84d6",
+      "test": "keynoteFormulaMergeAndAxes",
+      "scope": "式token/保存済み5、2セル結合、軸min/max/title/grid。現行UFFと旧PreUFF型、親styleの継承を比較。"
+    },
+    {
+      "id": "R81",
+      "format": "ppt",
+      "profile": "pptBinary",
+      "operation": "read",
+      "fixture": "libreoffice-legacy.ppt",
+      "fixtureSHA256": "353123fbce22ce2cd4e5bea0507462d08e609d45c495aee3a9496836cd78c54b",
+      "test": "legacyPPTLivePersistOrderAndProducerText",
+      "scope": "旧形式の明示codec、寸法・文書順・文字と原本/未知構造。PPTはLibreOffice生成物、XMLは架空合成fixture。"
+    },
+    {
+      "id": "R82",
+      "format": "keynoteLegacy",
+      "profile": "keynoteXML",
+      "operation": "read",
+      "fixture": "legacy-xml.key.zip",
+      "fixtureSHA256": "cd0f26ffca665f8220cc603e0e9650cc22b479b71294e2f7d2ce6dad76b80172",
+      "test": "legacyXMLDetectionRequiresPresentationAndRetainsUnknown",
+      "scope": "旧形式の明示codec、寸法・文書順・文字と原本/未知構造。PPTはLibreOffice生成物、XMLは架空合成fixture。"
+    },
+    {
+      "id": "R83",
+      "format": "sxi",
+      "profile": "impressXML",
+      "operation": "read",
+      "fixture": "legacy-impress.sxi",
+      "fixtureSHA256": "8dbacd8824007151e49b2e419b1a6065be6d02551e7d54a0c830715749e62227",
+      "test": "legacyXMLReadOnlyCodecs",
+      "scope": "旧形式の明示codec、寸法・文書順・文字と原本/未知構造。PPTはLibreOffice生成物、XMLは架空合成fixture。"
+    },
+    {
+      "id": "R84",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "stored.pptx",
+      "fixtureSHA256": "86c64392612d567f68ab1fc60a82af3417517fdaf39e2255379a632a7b75b769",
+      "test": "fileBackedSelectionAndChangeDetection",
+      "scope": "file-backed選択結果のsnapshotとの一致、atomic置換の検出。cache上限/未選択payloadは別テストで確認。"
+    },
+    {
+      "id": "R85",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "fileBackedSelectionAndChangeDetection",
+      "scope": "file-backed選択結果のsnapshotとの一致、atomic置換の検出。cache上限/未選択payloadは別テストで確認。"
+    },
+    {
+      "id": "R86",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "remaining-native.keynote.zip",
+      "fixtureSHA256": "995d14e18e841d09011839535530278d044ec45245cf8f4ad2fc2683e6752aa7",
+      "test": "fileBackedSelectionAndChangeDetection",
+      "scope": "file-backed選択結果のsnapshotとの一致、atomic置換の検出。cache上限/未選択payloadは別テストで確認。"
+    },
+    {
+      "id": "R87",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "keynote-formula-15.4.key.zip",
+      "fixtureSHA256": "a0a9dbc06f3ecbcceedff54e19800d49870ec14bd875024b7b16ceceb5124052",
+      "test": "keynoteProducerFormulaAndMergeMatchAppValues",
+      "scope": "Keynote 15.4作成物。AppleScriptでC2の式=A2+B2と保存済み5、A1:B1結合を取得してTSCE参照token/結合投影と比較。外観や全式を含まない。"
+    },
+    {
+      "id": "completion-content-mathml",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "contentMathMLBindingsAndNumericComponents",
+      "scope": "内部数式を合成Content MathMLへ置換し、apply/bind・有理数の成分・内容辞書と束縛変数を検査。"
+    },
+    {
+      "id": "completion-transform",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "odfTransformOrderAnglesAndTextPath",
+      "scope": "custom-shapeへtransform/text-pathを追加し、2D変形順・degree/grad/radianとモデル値を検査。"
+    },
+    {
+      "id": "completion-engine",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "semantic-reading.odp",
+      "fixtureSHA256": "0ab37c1e02d9814c4f729cb2cc583abc98c2f99347c7d323319343d41a23dae7",
+      "test": "customODPEngineRequiresExplicitProvider",
+      "scope": "独自engineを明示追加し、既定opaqueと登録providerの解析結果を検査。"
+    },
+    {
+      "id": "completion-chart3d",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "advanced-reading.pptx",
+      "fixtureSHA256": "68566f641a4c7b145c62d2931b475fa62cbde889bc0e0cd7bd39e2b51fe0707c",
+      "test": "chart3DAndAxisDetails",
+      "scope": "chartに3D view/floorとaxis単位を追加し、角度/倍率/色・JSON往復を検査。"
+    },
+    {
+      "id": "completion-keynote",
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "fixture": "native-synthetic.keynote.zip",
+      "fixtureSHA256": "a9f0130b4f47a14113c4694ae6a546630f5484e4721f214ab602b533092ad861",
+      "test": "keynoteNestedReferencesSchemasAndInventory",
+      "scope": "文書索引とheader参照graphを検査。同テスト内の合成wireでUID/入れ子/未知fieldとschema予算を検査。"
+    },
+    {
+      "id": "completion-flat",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "completion-flat.fodp",
+      "fixtureSHA256": "e8f82ce54899ddbbb5b0402afb1300bf258335e800b3896bae54b0470a032ee3",
+      "test": "flatODPAndDifferentPageSizes",
+      "scope": "単体office:document、異なる2ページ寸法、原本bytesとsizeOverrideを検査。"
     }
   ],
   "capabilities": [
@@ -548,10 +1028,10 @@
       "operation": "read",
       "status": "partial",
       "evidence": [
-        "E04",
-        "E29"
+        "E48",
+        "completion-chart3d"
       ],
-      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+      "notes": "chartに3D view/floorとaxis単位を追加し、角度/倍率/色・JSON往復を検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
     },
     {
       "format": "pptx",
@@ -814,9 +1294,10 @@
       "operation": "read",
       "status": "partial",
       "evidence": [
-        "E24"
+        "E24",
+        "completion-flat"
       ],
-      "notes": "指定ODF 1.3 fixtureで基本値を投影。named/master継承を直接値へ埋めない。書込と外観は未提供。"
+      "notes": "単体office:document、異なる2ページ寸法、原本bytesとsizeOverrideを検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
     },
     {
       "format": "odp",
@@ -959,7 +1440,7 @@
       "evidence": [
         "E28"
       ],
-      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+      "notes": "直接パスとguide/adjustment式、効果treeを保持。GeometryEvaluatorは標準17演算・楕円弧を評価。純粋モデルの独立数値検査はReadingCompletionTests。描画/合成なし。"
     },
     {
       "format": "pptx",
@@ -968,9 +1449,10 @@
       "operation": "read",
       "status": "partial",
       "evidence": [
-        "E28"
+        "E28",
+        "R72"
       ],
-      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+      "notes": "DrawingMLの追加文字外観と効果tree、長さpt/角度度/倍率。未知属性はSourceXML。描画・新規保存は行わない。"
     },
     {
       "format": "pptx",
@@ -990,9 +1472,9 @@
       "operation": "read",
       "status": "partial",
       "evidence": [
-        "E29"
+        "E48"
       ],
-      "notes": "master/layoutの要素・表・画像、2D barの疎cache/literal・数式・軸・タイトル・凡例、保存済みdiagram drawing。描画・Workbook再計算・自動配置を含まない。"
+      "notes": "ChartML種別とx/y/bubbleSize、多段cache、全書式構造を読取。描画・外部workbook再計算なし。"
     },
     {
       "format": "pptx",
@@ -1135,7 +1617,7 @@
       "evidence": [
         "E33"
       ],
-      "notes": "順序付き色変換と透明度系、数値Bezier/close、外側の影・effectRef。色空間計算・guide/arc評価・合成を含まない。"
+      "notes": "直接パスとguide/adjustment式、効果treeを保持。GeometryEvaluatorは標準17演算・楕円弧を評価。純粋モデルの独立数値検査はReadingCompletionTests。描画/合成なし。"
     },
     {
       "format": "pptx",
@@ -1393,10 +1875,9 @@
       "operation": "read",
       "status": "partial",
       "evidence": [
-        "E38",
-        "E44"
+        "E49"
       ],
-      "notes": "従来コメントの本文・作者・日時字句・位置(pt)とXML。返信・mentions等の新形式は未解釈。"
+      "notes": "新コメントのthread/reply/author/rich text/anchor構造を読取。保存は原本保持に限定。"
     },
     {
       "format": "pptx",
@@ -1731,13 +2212,904 @@
     {
       "format": "pptx",
       "profile": "ooxmlTransitional",
-      "feature": "REV-002",
       "operation": "read",
-      "status": "preserveOnly",
+      "feature": "REV-002",
+      "status": "partial",
       "evidence": [
-        "E45"
+        "E45",
+        "E61"
       ],
-      "notes": "新形式コメントのpart/XML/参照を記述として返す。返信・解決・mentionsの意味モデルは未提供。"
+      "notes": "新コメントthread/reply・status・作者。anchor/taskは原本構造。mentionsの解決や編集は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "DOC-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E46"
+      ],
+      "notes": "確認済みtype/fieldの投影と全wire索引。式/結合/chart軸の確認済みsubsetを追加。未知object・高度属性・固有buildは原本と診断。保存なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "DOC-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E46"
+      ],
+      "notes": "確認済みtype/fieldの投影と全wire索引。式/結合/chart軸の確認済みsubsetを追加。未知object・高度属性・固有buildは原本と診断。保存なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "DOC-009",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E46"
+      ],
+      "notes": "確認済みtype/fieldの投影と全wire索引。式/結合/chart軸の確認済みsubsetを追加。未知object・高度属性・固有buildは原本と診断。保存なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "GEO-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E46"
+      ],
+      "notes": "確認済みtype/fieldの投影と全wire索引。式/結合/chart軸の確認済みsubsetを追加。未知object・高度属性・固有buildは原本と診断。保存なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "TXT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E46"
+      ],
+      "notes": "確認済みtype/fieldの投影と全wire索引。式/結合/chart軸の確認済みsubsetを追加。未知object・高度属性・固有buildは原本と診断。保存なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "PKG-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E46",
+        "completion-keynote"
+      ],
+      "notes": "文書索引とheader参照graphを検査。同テスト内の合成wireでUID/入れ子/未知fieldとschema予算を検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "STY-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E47"
+      ],
+      "notes": "明示resolveElementでplaceholderとthemeの限定継承・出典を取得。曖昧/未知参照は未解決診断。rendererなし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "STY-006",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E47"
+      ],
+      "notes": "明示resolveElementでplaceholderとthemeの限定継承・出典を取得。曖昧/未知参照は未解決診断。rendererなし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "STY-010",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E47"
+      ],
+      "notes": "明示resolveElementでplaceholderとthemeの限定継承・出典を取得。曖昧/未知参照は未解決診断。rendererなし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "ANI-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E50"
+      ],
+      "notes": "時間語彙/対象/文字コメント/メディア参照を読取。高度geometryはSourceXML構造と原本descriptorで取得し意味未解釈。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "MED-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E50"
+      ],
+      "notes": "時間語彙/対象/文字コメント/メディア参照を読取。高度geometryはSourceXML構造と原本descriptorで取得し意味未解釈。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "REV-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E50"
+      ],
+      "notes": "時間語彙/対象/文字コメント/メディア参照を読取。高度geometryはSourceXML構造と原本descriptorで取得し意味未解釈。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "GEO-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E50",
+        "odp-enhanced-geometry",
+        "R76",
+        "completion-transform",
+        "completion-engine"
+      ],
+      "notes": "独自engineを明示追加し、既定opaqueと登録providerの解析結果を検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlAgile",
+      "feature": "SEC-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E51",
+        "E52",
+        "E53"
+      ],
+      "notes": "復号専用製品。AES128/192/256。AgileはSHA1/256/512とHMAC、StandardはSHA1/ECB。証明書/IRM/RC4/再暗号化なし。",
+      "provider": "SlideDecrypt"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStandard",
+      "feature": "SEC-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E54",
+        "E55",
+        "E56"
+      ],
+      "notes": "復号専用製品。AES128/192/256。AgileはSHA1/256/512とHMAC、StandardはSHA1/ECB。証明書/IRM/RC4/再暗号化なし。",
+      "provider": "SlideDecrypt"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "SEC-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E57",
+        "E58"
+      ],
+      "notes": "AES-CBC/PBKDF2、SHA1/SHA256 start、SHA1/1K等のchecksum。Blowfish/再暗号化なし。",
+      "provider": "SlideDecrypt"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "SEC-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E59"
+      ],
+      "notes": "iwpv2 version2/format1、PBKDF2SHA1/AES128CBC。現行15.4の架空producerでも照合。末尾20bytes未解釈、再暗号化なし。",
+      "provider": "SlideDecrypt"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "TBL-001",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "TBL-002",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "CHT-004",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "ANI-001",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "ANI-002",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "ANI-004",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "STY-007",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "operation": "read",
+      "feature": "TXT-002",
+      "status": "partial",
+      "evidence": [
+        "E60"
+      ],
+      "notes": "確認した文字run/style、v5セル値、chart grid、build/transitionだけ。未知型・高度属性はwire索引に保持し、描画・再生・式再計算は未対応。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "feature": "CHT-004",
+      "status": "partial",
+      "evidence": [
+        "E62"
+      ],
+      "notes": "埋込ODF chartのlocal-tableと単純A1 range・title/legendの字句・原本書式。外部range・高度属性は原本と未解決診断。描画/再計算は行わない。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "feature": "CHT-007",
+      "status": "partial",
+      "evidence": [
+        "E62"
+      ],
+      "notes": "埋込ODF chartのlocal-tableと単純A1 range・title/legendの字句・原本書式。外部range・高度属性は原本と未解決診断。描画/再計算は行わない。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "GEO-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E63"
+      ],
+      "notes": "確認した数値Bezier命令を原座標領域のまま投影。未知/parameterized/editable pathはwire索引と診断に保持する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "math-transitional"
+      ],
+      "notes": "OMMLの限定構造をEquationNodeへ投影。字句連結は線形式ではない。MathML/LaTeX・計算・描画・全書式・実アプリは未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-005",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "math-3d-preserve-transitional"
+      ],
+      "notes": "合成fixtureの未変更保存と無関係な位置/表幅の変更で原本構造を保持。実アプリは未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-005",
+      "operation": "create",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "新規保存は拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "OBJ-005",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "投影の書換えは拒否する。原本の数式を含む文字領域の再構成も拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "GEO-012",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "scene-transitional",
+        "R73",
+        "completion-chart3d"
+      ],
+      "notes": "chartに3D view/floorとaxis単位を追加し、角度/倍率/色・JSON往復を検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "GEO-012",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "math-3d-preserve-transitional"
+      ],
+      "notes": "合成fixtureの未変更保存と無関係な位置/表幅の変更で原本構造を保持。実アプリは未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "GEO-012",
+      "operation": "create",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "新規保存は拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "GEO-012",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "投影の書換えは拒否する。原本の数式を含む文字領域の再構成も拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "OBJ-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "math-strict"
+      ],
+      "notes": "OMMLの限定構造をEquationNodeへ投影。字句連結は線形式ではない。MathML/LaTeX・計算・描画・全書式・実アプリは未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "OBJ-005",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "math-3d-preserve-strict"
+      ],
+      "notes": "合成fixtureの未変更保存と無関係な位置/表幅の変更で原本構造を保持。実アプリは未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "OBJ-005",
+      "operation": "create",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "新規保存は拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "OBJ-005",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "投影の書換えは拒否する。原本の数式を含む文字領域の再構成も拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "GEO-012",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "scene-strict"
+      ],
+      "notes": "DrawingML図形のcamera/light・bevel・押出しの直接指定。省略はnil。3D model資源・文字/chartの3D・実効継承・描画は対象外。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "GEO-012",
+      "operation": "preserve",
+      "status": "partial",
+      "evidence": [
+        "math-3d-preserve-strict"
+      ],
+      "notes": "合成fixtureの未変更保存と無関係な位置/表幅の変更で原本構造を保持。実アプリは未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "GEO-012",
+      "operation": "create",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "新規保存は拒否する。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "GEO-012",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [],
+      "notes": "投影の書換えは拒否する。原本の数式を含む文字領域の再構成も拒否する。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "OBJ-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "odp-mathml",
+        "R76",
+        "completion-content-mathml"
+      ],
+      "notes": "内部数式を合成Content MathMLへ置換し、apply/bind・有理数の成分・内容辞書と束縛変数を検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R72"
+      ],
+      "notes": "DrawingMLの追加文字外観と効果tree、長さpt/角度度/倍率。未知属性はSourceXML。描画・新規保存は行わない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R72"
+      ],
+      "notes": "DrawingMLの追加文字外観と効果tree、長さpt/角度度/倍率。未知属性はSourceXML。描画・新規保存は行わない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-006",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R72"
+      ],
+      "notes": "DrawingMLの追加文字外観と効果tree、長さpt/角度度/倍率。未知属性はSourceXML。描画・新規保存は行わない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TXT-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R72"
+      ],
+      "notes": "DrawingMLの追加文字外観と効果tree、長さpt/角度度/倍率。未知属性はSourceXML。描画・新規保存は行わない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "CHT-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R74"
+      ],
+      "notes": "XLSXのshared/inline strings・型/字句・式と疎なA1範囲。chart cacheとworkbookPointsは別々。再計算・ネットワーク取得なし。旧XLSは参照保持。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf12",
+      "feature": "PKG-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R75"
+      ],
+      "notes": "確認済みMathML/path/modifier/guide subset。GeometryEvaluatorで算術・関数・条件・参照・handle/text areaを独自座標で評価。演算/深さ予算、未知式は拒否。全ODF機能・描画なし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf12",
+      "feature": "GEO-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R75"
+      ],
+      "notes": "確認済みMathML/path/modifier/guide subset。GeometryEvaluatorで算術・関数・条件・参照・handle/text areaを独自座標で評価。演算/深さ予算、未知式は拒否。全ODF機能・描画なし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf12",
+      "feature": "OBJ-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R75"
+      ],
+      "notes": "確認済みMathML/path/modifier/guide subset。GeometryEvaluatorで算術・関数・条件・参照・handle/text areaを独自座標で評価。演算/深さ予算、未知式は拒否。全ODF機能・描画なし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "PKG-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R76",
+        "completion-flat"
+      ],
+      "notes": "単体office:document、異なる2ページ寸法、原本bytesとsizeOverrideを検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf14",
+      "feature": "PKG-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R77"
+      ],
+      "notes": "確認済みMathML/path/modifier/guide subset。GeometryEvaluatorで算術・関数・条件・参照・handle/text areaを独自座標で評価。演算/深さ予算、未知式は拒否。全ODF機能・描画なし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf14",
+      "feature": "GEO-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R77"
+      ],
+      "notes": "確認済みMathML/path/modifier/guide subset。GeometryEvaluatorで算術・関数・条件・参照・handle/text areaを独自座標で評価。演算/深さ予算、未知式は拒否。全ODF機能・描画なし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf14",
+      "feature": "OBJ-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R77"
+      ],
+      "notes": "確認済みMathML/path/modifier/guide subset。GeometryEvaluatorで算術・関数・条件・参照・handle/text areaを独自座標で評価。演算/深さ予算、未知式は拒否。全ODF機能・描画なし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "GEO-012",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R78"
+      ],
+      "notes": "dr3d scene/object・camera/light vector・12値matrix・style継承とextrusion属性。未知transformや属性は原本。描画なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "TBL-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R79",
+        "R80",
+        "R87"
+      ],
+      "notes": "BNC v5 formula ID・TSCE tokenとcache、merge map/tract、UFF/PreUFF chart軸属性とstyle親参照。未知token/書式はwire索引。式再計算・描画なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "TBL-010",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R79",
+        "R80",
+        "R87",
+        "completion-keynote"
+      ],
+      "notes": "文書索引とheader参照graphを検査。同テスト内の合成wireでUID/入れ子/未知fieldとschema予算を検査。 未知extension/版は原本と診断。描画・保存・再計算は追加しない。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "CHT-006",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R79",
+        "R80"
+      ],
+      "notes": "BNC v5 formula ID・TSCE tokenとcache、merge map/tract、UFF/PreUFF chart軸属性とstyle親参照。未知token/書式はwire索引。式再計算・描画なし。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "CHT-007",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R79",
+        "R80"
+      ],
+      "notes": "BNC v5 formula ID・TSCE tokenとcache、merge map/tract、UFF/PreUFF chart軸属性とstyle親参照。未知token/書式はwire索引。式再計算・描画なし。"
+    },
+    {
+      "format": "ppt",
+      "profile": "pptBinary",
+      "feature": "PKG-013",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R81"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "ppt",
+      "profile": "pptBinary",
+      "feature": "DOC-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R81"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "ppt",
+      "profile": "pptBinary",
+      "feature": "DOC-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R81"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "ppt",
+      "profile": "pptBinary",
+      "feature": "TXT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R81"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "keynoteLegacy",
+      "profile": "keynoteXML",
+      "feature": "PKG-012",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R82"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "keynoteLegacy",
+      "profile": "keynoteXML",
+      "feature": "DOC-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R82"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "keynoteLegacy",
+      "profile": "keynoteXML",
+      "feature": "DOC-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R82"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "keynoteLegacy",
+      "profile": "keynoteXML",
+      "feature": "TXT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R82"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "sxi",
+      "profile": "impressXML",
+      "feature": "PKG-014",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R83"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "sxi",
+      "profile": "impressXML",
+      "feature": "DOC-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R83"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "sxi",
+      "profile": "impressXML",
+      "feature": "DOC-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R83"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "sxi",
+      "profile": "impressXML",
+      "feature": "TXT-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R83"
+      ],
+      "notes": "読取専用の限定subset。全書式は原本に保持し診断。旧PPTはlive persistとtext record、Keynote2 XML/plain/gzip、SXI旧office XML。暗号・変換・保存なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IO-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R84"
+      ],
+      "notes": "ZIP/Keynote directoryの不変入力、ODP XML/Keynote IWA位置索引、圧縮+展開cacheの合計予算と文書内並行読取。途中変更は拒否。モデル/一時領域/RSSは別。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IO-011",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R84"
+      ],
+      "notes": "ZIP/Keynote directoryの不変入力、ODP XML/Keynote IWA位置索引、圧縮+展開cacheの合計予算と文書内並行読取。途中変更は拒否。モデル/一時領域/RSSは別。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "IO-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R85"
+      ],
+      "notes": "ZIP/Keynote directoryの不変入力、ODP XML/Keynote IWA位置索引、圧縮+展開cacheの合計予算と文書内並行読取。途中変更は拒否。モデル/一時領域/RSSは別。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "IO-011",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R85"
+      ],
+      "notes": "ZIP/Keynote directoryの不変入力、ODP XML/Keynote IWA位置索引、圧縮+展開cacheの合計予算と文書内並行読取。途中変更は拒否。モデル/一時領域/RSSは別。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "IO-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R86"
+      ],
+      "notes": "ZIP/Keynote directoryの不変入力、ODP XML/Keynote IWA位置索引、圧縮+展開cacheの合計予算と文書内並行読取。途中変更は拒否。モデル/一時領域/RSSは別。"
+    },
+    {
+      "format": "keynote",
+      "profile": "keynoteIWA",
+      "feature": "IO-011",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "R86"
+      ],
+      "notes": "ZIP/Keynote directoryの不変入力、ODP XML/Keynote IWA位置索引、圧縮+展開cacheの合計予算と文書内並行読取。途中変更は拒否。モデル/一時領域/RSSは別。"
     }
   ]
 }

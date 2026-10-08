@@ -16,7 +16,7 @@ import SlideODP
     let reader = try await codecs.slideReader(encoded.data, format: .pptx)
     #expect(try await reader.slide(id: reader.slideDescriptors[0].id).slide.plainText == "Async modules")
     let plan = try await codecs.planWrite(read.presentation)
-    #expect(try await codecs.encoded(read.presentation, using: plan).data == encoded.data)
+    #expect(try await codecs.write(read.presentation, using: plan).data == encoded.data)
     #expect(try codecs.capabilities(for: .pptx)[.play] == .unsupported)
 }
 
@@ -45,14 +45,15 @@ import SlideODP
     try codecs.duplicateSlide(id: p.slides[0].id, in: &p)
     let plan = try codecs.planWrite(p)
     #expect(plan.canSave && plan.profile == .ooxmlTransitional)
-    #expect(try codecs.read(codecs.encoded(p, using: plan).data).presentation.slides.count == 2)
+    #expect(try codecs.read(codecs.write(p, using: plan).data).presentation.slides.count == 2)
 }
 
 @Test func independentODPProductAndReaderStayReadOnly() throws {
-    let codec = ODPCodec(), set = CodecSet([.odp])
+    let set = CodecSet([.odp])
+    let capabilities = try set.capabilities(for: .odp)
     #expect(try set.capabilities(for:.odp)[.create] == .unsupported)
-    #expect(codec.capabilities.capability(for:"TXT-001",operation:.read,profile:.odf13).status == .partial)
-    #expect(codec.capabilities.capability(for:"TXT-001",operation:.read,profile:.odf12).status == .unverified)
+    #expect(capabilities.capability(for:"TXT-001",operation:.read,profile:.odf13).status == .partial)
+    #expect(capabilities.capability(for:"TXT-001",operation:.read,profile:.odf12).status == .unverified)
     #expect(throws:SlideError.self) { try set.write(Presentation(),as:.odp) }
     let bytes = try CodecSet([.pptx]).write(Presentation(slides:[Slide()])).data
     let reader = try SlideReader(data:bytes,codecs:CodecSet([.pptx]))

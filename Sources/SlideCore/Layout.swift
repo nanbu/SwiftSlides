@@ -30,6 +30,13 @@ public enum Layout {
     }
     /// frameを持つ要素を配列順に、同じ隙間で指定矩形内へ置く。収まらない場合はthrow。
     public static func distribute(_ elements: inout [Element], along axis: Axis, in bounds: Rect) throws {
+        func valid(_ frame: Rect) -> Bool {
+            [frame.x, frame.y, frame.width, frame.height, frame.maxX, frame.maxY].allSatisfy(\.isFinite)
+                && frame.width >= 0 && frame.height >= 0
+        }
+        guard valid(bounds), elements.allSatisfy({ $0.frame.map(valid) ?? true }) else {
+            throw SlideError.invalidModel("均等配置の座標・寸法が不正です")
+        }
         let indices = elements.indices.filter { elements[$0].frame != nil }
         guard !indices.isEmpty else { return }
         let horizontal = axis == .horizontal

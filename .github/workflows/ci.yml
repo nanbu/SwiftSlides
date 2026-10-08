@@ -19,6 +19,9 @@ jobs:
       - run: swift test
       - run: swift build -c release
       - run: python3 scripts/verify-advanced-reading.py
+      - run: python3 scripts/verify-math-3d-reading.py
+      - run: python3 scripts/verify-odp-semantic-reading.py
+      - run: python3 scripts/verify-remaining-reading.py
       - run: python3 scripts/check-contract.py
       - run: python3 scripts/check-public-api.py
       - run: python3 scripts/build-feature-catalog.py --check

@@ -18,8 +18,8 @@ func run(_ mode:String,_ input:URL,_ output:URL,_ count:Int) throws {
  var indexMS:Double?=nil,oneMS:Double?=nil,bytes=0
  switch mode {
  case "readAll":let p=try Presentation(contentsOf:input);precondition(p.slides.count==count);bytes=p.plainText.utf8.count
- case "readOne":
-  let reader=try SlideReader(contentsOf:input,codecs:.all);indexMS=ms(start)
+ case "readOne","readFileOne":
+  let reader = try mode == "readFileOne" ? SlideReader(fileBackedURL:input,codecs:.all,cacheBudget:.init(totalBytes:8<<20)) : SlideReader(contentsOf:input,codecs:.all);indexMS=ms(start)
   let one=clock.now;let result=try reader.slide(id:reader.slideDescriptors[count/2].id);oneMS=ms(one);precondition(result.slide.elements.count==10);bytes=result.slide.plainText.utf8.count
  case "foundationAtomic","fileTarget":
   let data=try Data(contentsOf:input)
@@ -52,14 +52,16 @@ def main():
   (p/'Sources/Measure/main.swift').write_text(SOURCE)
   subprocess.run(['swift','build','-c','release','--disable-sandbox','--package-path',str(p)],check=True,stdout=sys.stderr)
   binary=subprocess.check_output(['swift','build','-c','release','--package-path',str(p),'--show-bin-path'],text=True).strip()+'/Measure'
-  for count in [10,100,1000]:
+  for count,media_bytes in [(10,0),(100,0),(1000,0),(10,64<<20)]:
    for ext in ['pptx','odp']:
     deck=p/('input.'+ext);output=p/'output.pptx'
     if ext=='odp':odp(deck,count)
     else:subprocess.run([binary,'create',str(deck),str(output),str(count)],check=True,stdout=subprocess.DEVNULL)
+    if media_bytes:
+     with zipfile.ZipFile(deck,'a') as z:z.writestr('Synthetic/large-media.bin',bytes(range(256))*(media_bytes//256),compress_type=zipfile.ZIP_STORED)
     with zipfile.ZipFile(deck) as z:expanded=sum(x.file_size for x in z.infolist())
-    dataset={'format':ext,'slides':count,'fileBytes':deck.stat().st_size,'declaredExpandedBytes':expanded,'operations':{}}
-    modes=['readAll','readOne']+(['foundationAtomic','fileTarget'] if ext=='pptx' else [])
+    dataset={'format':ext,'slides':count,'unrequestedMediaBytes':media_bytes,'fileBytes':deck.stat().st_size,'declaredExpandedBytes':expanded,'operations':{}}
+    modes=['readAll','readOne','readFileOne']+(['foundationAtomic','fileTarget'] if ext=='pptx' else [])
     samples={mode:[] for mode in modes}
     # Alternate competing operations in every round, not all-old then all-new.
     for _ in range(result['runs']):

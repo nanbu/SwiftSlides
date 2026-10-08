@@ -17,7 +17,7 @@ private enum EditingFailure: Error { case stopped }
         }
     }
     #expect(result == deck.slides[0].elements[6].children[0].name)
-    let output = try deck.encoded(options: .init(strict: true))
+    let output = try deck.write(options: .init(strict: true))
     let reopened = try Presentation(data: output.data)
     #expect(reopened.slides[0].elements[6].children[0].id == childID)
     #expect(reopened.slides[0].elements[6].children[0].frame?.x == 740)
@@ -134,11 +134,11 @@ private enum EditingFailure: Error { case stopped }
         }
     }
     #expect(deck.metadata.title != "破棄" && deck.slides == original)
-    #expect(try deck.encoded().data == data)
+    #expect(try deck.write().data == data)
     #expect(throws: SlideError.self) { try deck.transaction { $0.size.width = .nan } }
     #expect(throws: SlideError.self) { try deck.transaction { $0.slides[1].elements[0].frame?.x = 80 } }
     #expect(deck.slides == original && deck.size == originalSize)
-    #expect(try deck.encoded().data == data)
+    #expect(try deck.write().data == data)
 }
 
 @Test func transactionStrictDefaultRefusesRewriteAndOptInReturnsWarnings() throws {

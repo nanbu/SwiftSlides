@@ -1,6 +1,6 @@
 # 表示用の情報を読む
 
-SwiftSlidesは原本の値と参照を提供する。文字測定、実効継承、ピクセル描画、ぼかし、グラフの描画は呼出側で実行する。API契約の正典は[実装仕様](implementation-spec.md#表示用の直接値の投影)。
+SwiftSlidesは原本の値と参照を提供する。PPTXの限定継承解決はresolveElementで明示的に行う。文字測定、ピクセル描画、ぼかし、グラフの描画は呼出側で実行する。API契約の正典は[実装仕様](implementation-spec.md#表示用の直接値の投影)。
 
 | 提案 | 判断 | 今回の範囲 |
 |---|---|---|
@@ -54,3 +54,22 @@ ODPでは`TableCell.value`のtype・lexicalValue・currencyと`formula`を表示
 `Element.media`はaudio/video/Office拡張mediaの参照を返し、bytesは`asset(at:)`で取得します。外部参照は取得しません。`Slide.comments`は従来形式の本文・作者・日時字句・位置(pt)です。新形式コメントは意味を推測せず、`NativeFeatureDescriptor`のXMLと参照、診断で示します。
 
 これらの新しい投影は読取専用です。無関係な編集や未変更保存では原本を保持し、投影の変更や新規生成による情報の欠落を拒否します。`scripts/verify-advanced-reading.py`が公開CLIの値をPython標準XML parserで照合します。アプリの再保存で削られた値は復元しません。
+
+## 追加の読み取り入口
+
+PPTXの`TextRun.equation`はOMMLの分数・根号・添字・総和・行列等を、引数境界付きの`EquationNode`として返す。段落内のrun順を保ち、`source`には未知書式とAlternateContentの未選択Choice/Fallbackも残す。`run.text`と`lexicalText`はtextノードを連結した字句であり、分数線・総和記号等を補った線形式ではない。計算・LaTeX変換・描画は提供しない。数式を含む図形・notes・セルの文字領域の再構成は、数式を除去してから保存する場合も拒否する。位置・表幅など無関係な変更では原式を保持する。
+
+PPTXの`Element.scene3D`は直接camera preset/FOV/zoom・camera/lightの回転・light rig/direction、`shape3D`は深さ・押出し・輪郭幅・材質・上下bevel・色を返す。寸法はpt、角度は度、zoomは100%=1、省略はnil。backdropと未知属性は各`source`を参照する。明示resolveElementの継承、model3D資源参照と文字3Dを追加。chartの3D view・壁・床はChartの追加値に保持する。描画は対象外で、投影の変更・新規保存は拒否する。合成fixtureと独立XML照合による限定検査であり、実アプリ互換性は未検証。
+
+`resolveElement(slideID:elementID:)`はlayout/masterのplaceholderとtheme matrix/fontの限定継承、background、colorMap、theme、属性ごとのoriginsを返す。元Elementを変えず、未知・曖昧参照をdiagnosticsに残す。chartにはscatter/bubbleのxValues/yValues/bubbleSizes、多段カテゴリのlevels、全書式構造のpropertiesを追加した。新コメントはSlide.commentThreadsから作者・reply・rich text・anchorを読む。
+
+`readSourceXML(at:)` / Element.sourcePropertiesは名前空間・属性・mixed contentを保持する全XML構造の入口であり、全属性の意味解釈を保証しない。ODPの時間木・media・annotationは共通モデル、3Dや未知拡張はこの構造とNativeFeatureDescriptorで読む。KeynoteはSlideKeynoteのreadKeynoteObjectsから型・順序付きfield・object/data参照・原本bytesを読む。未知型を空の対応済み要素に変えない。
+
+ODPの数式は`Element.equation`、段落内は`TextRun.equation`に`Dialect.mathML`として返す。分数・根号・添字・上下限・行列を元の子順で取得でき、引数はMathML要素内の位置で区別する。`lexicalText`はtokenの字句連結で、annotationの原式テキストやannotation-xmlを重ねて含めない。内部objectのMathMLと直接inline MathMLを読み、frameのpreviewはsourcePropertiesに残す。未知/Content MathMLは原本と診断へ残し、外部objectを取得しない。
+
+ODP custom-shapeの`enhancedGeometry`はtype・viewBox・modifier・guide式・text area・鏡像指定とパスを返す。`EnhancedPathCommand.Kind`は16命令を区別し、引数の`GeometryOperand`は数値・modifier添字・guide参照を区別する。moveの複数組は最初がmove、残りがlineを意味する。角度付きellipseの角度はODFの度、座標はviewBox内の値。guideを評価したpt座標へ変換しない。pathの省略/未解決はnil、明示空は空配列で、未知命令は原本と診断で確認する。transformはElement.transform2Dへ投影する。独自engineは明示geometryProviderが未供給の場合にopaqueと原本・診断を維持する。
+
+両モデルは不変の原本データを共有する値型で、JSONの構造と値比較を維持する。保存・変換・数式計算・geometry評価・描画は追加しない。検証はODF 1.3合成fixture、破損拒否、独立XML照合、公開consumerに限定し、実アプリ互換性は未検証。
+
+
+追加の読取モデル: TextAppearance/DrawingEffect、ODF SpatialGeometry、Keynote CellFormula、WorkbookData。GeometryEvaluatorはODF guideとhandle位置を元座標で評価し、変換/保存へ自動反映しない。ChartData.workbookPointsとcacheは独立し、外部workbookは明示providerからだけ受け取る。式の再計算と描画は行わない。

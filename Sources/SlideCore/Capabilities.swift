@@ -59,6 +59,12 @@ public struct CapabilityProfile: RawRepresentable, Sendable, Hashable, Codable, 
     public static let odf12: Self = "odf12"
     public static let odf13: Self = "odf13"
     public static let odf14: Self = "odf14"
+    public static let keynoteIWA: Self = "keynoteIWA"
+    public static let keynoteXML: Self = "keynoteXML"
+    public static let pptBinary: Self = "pptBinary"
+    public static let impressXML: Self = "impressXML"
+    public static let ooxmlAgile: Self = "ooxmlAgile"
+    public static let ooxmlStandard: Self = "ooxmlStandard"
 }
 
 /// 回帰検査の定義への参照。実行結果や実アプリ互換性の保証ではない。

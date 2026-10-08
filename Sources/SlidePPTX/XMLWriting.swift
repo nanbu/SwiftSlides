@@ -15,13 +15,14 @@ enum PPTXXML {
     }
     static func transform(_ e: Element, p: Bool = false) -> String {
         let prefix = p ? "p" : "a"
-        let attrs = " rot=\"\(Int64((e.rotation * 60_000).rounded()))\" flipH=\"\(e.flipHorizontal ? 1 : 0)\" flipV=\"\(e.flipVertical ? 1 : 0)\""
+        let attrs = " rot=\"\(Int64((e.rotation * 60_000).rounded()))\" flipH=\"\(e.isFlippedHorizontally ? 1 : 0)\" flipV=\"\(e.isFlippedVertically ? 1 : 0)\""
         let f = e.frame ?? Rect(x:0,y:0,width:0,height:0)
         var body = "<a:off x=\"\(emu(f.x))\" y=\"\(emu(f.y))\"/><a:ext cx=\"\(emu(f.width))\" cy=\"\(emu(f.height))\"/>"
         if e.kind == .group, let c = e.childFrame { body += "<a:chOff x=\"\(emu(c.x))\" y=\"\(emu(c.y))\"/><a:chExt cx=\"\(emu(c.width))\" cy=\"\(emu(c.height))\"/>" }
         return "<\(prefix):xfrm\(attrs)>\(body)</\(prefix):xfrm>"
     }
     static func textStyle(_ s: TextStyle, tag: String = "rPr", linkID: String? = nil, internalLink: Bool = false) throws -> String {
+        guard s.appearance == nil else { throw SlideError.unsafeEdit("追加文字外観は読取専用です") }
         var attrs = ""
         if let size = s.font.size { attrs += " sz=\"\(hundredths(size))\"" }
         if let bold = s.bold { attrs += " b=\"\(bold ? 1 : 0)\"" }; if let italic = s.italic { attrs += " i=\"\(italic ? 1 : 0)\"" }
@@ -57,6 +58,7 @@ enum PPTXXML {
         let properties = try paragraphProperties(p.style, defaultTextStyle: p.defaultTextStyle)
         var runs = ""
         for run in p.runs {
+            guard run.equation == nil else { throw SlideError.unsafeEdit("数式runの新規保存・再構成は未対応です") }
             let rid = try run.link.map(relationship)
             let internalLink: Bool; if case .slide = run.link { internalLink = true } else { internalLink = false }
             let style = try textStyle(run.style,linkID:rid,internalLink:internalLink)
@@ -73,11 +75,11 @@ enum PPTXXML {
         return "<a:p>\(properties)\(runs)\(try textStyle(p.endTextStyle,tag:"endParaRPr"))</a:p>"
     }
     static func text(_ text: TextBody, p: Bool = true, relationship: (Link) throws -> String) throws -> String {
-        guard text.listStyle == nil else { throw SlideError.unsafeEdit("リスト既定書式の書換えは未対応です") }
+        guard text.appearance == nil, text.listStyle == nil else { throw SlideError.unsafeEdit("リスト既定書式の書換えは未対応です") }
         let prefix = p ? "p" : "a"
         var attrs = ""
         if let i = text.insets { attrs += " lIns=\"\(emu(i.left))\" tIns=\"\(emu(i.top))\" rIns=\"\(emu(i.right))\" bIns=\"\(emu(i.bottom))\"" }
-        if let alignment = text.verticalAlignment { attrs += " anchor=\"\(alignment.rawValue)\"" }; if let wrap = text.wrap { attrs += " wrap=\"\(wrap ? "square" : "none")\"" }
+        if let alignment = text.verticalAlignment { attrs += " anchor=\"\(alignment.rawValue)\"" }; if let wrap = text.wrapsText { attrs += " wrap=\"\(wrap ? "square" : "none")\"" }
         let paragraphs = try (text.paragraphs.isEmpty ? [Paragraph()] : text.paragraphs).map { try paragraph($0,relationship:relationship) }.joined()
         return "<\(prefix):txBody><a:bodyPr\(attrs)/><a:lstStyle/>\(paragraphs)</\(prefix):txBody>"
     }
@@ -87,7 +89,7 @@ enum PPTXXML {
         for i in table.rows.indices {
             var cells = ""
             for cell in table.rows[i] {
-                guard cell.borders == nil, cell.value == nil, cell.formula == nil else { throw SlideError.unsafeEdit("個別罫線・型付きセル値・式の新規保存は未対応です") }
+                guard cell.nativeProperties == nil, cell.borders == nil, cell.value == nil, cell.formula == nil, cell.nativeFormula == nil else { throw SlideError.unsafeEdit("個別罫線・型付きセル値・式の新規保存は未対応です") }
                 var attrs = ""
                 if cell.rowSpan > 1 { attrs += " rowSpan=\"\(cell.rowSpan)\"" }; if cell.columnSpan > 1 { attrs += " gridSpan=\"\(cell.columnSpan)\"" }
                 if cell.isMergeContinuation { attrs += " hMerge=\"1\"" }

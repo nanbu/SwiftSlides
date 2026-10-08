@@ -1,5 +1,7 @@
 # SwiftSlides実装計画
 
+2026-10-08の読取追加の現況は末尾「読取残件の完了範囲」と実装仕様を参照。以下のフェーズ本文と過去の実装記録は計画・履歴であり、過去の「未実装」を現況へ転用しない。
+
 将来計画。設計範囲は[形式調査](format-research.md)、[機能台帳](feature-catalog.md)、[API設計](api-design.md)。現行の対応表示を将来計画だけで増やさない。
 
 ## 推奨する順序
@@ -222,4 +224,37 @@ B〜Dは独立consumer・部分リンク・python-pptxによるパーツ/意味�
 
 公開前に`swift test`、`swift build -c release`、`python3 scripts/check-contract.py`、`python3 scripts/check-public-content.py --history`、機能台帳と詳細能力台帳の`--check`を実行する。コーデック変更には該当schema/独立parser/実アプリoracle、公開API変更にはExamples/DocC/部分リンク、性能表示変更には同条件の測定が追加で必要。未検証・対象外を含めて対応表を更新する。
 
-今回の依頼は調査・設計・計画、および最新Swiftを使った実装への着手。commit/push/tag/releaseは実施せず、レビュー可能な変更として残す。
+初期調査・設計・計画の段階ではcommit/push/tag/releaseを実施せず、レビュー可能な変更として残した。2026-10-08の追加依頼で、既存変更のcommit/pushと残読取APIの実装へ進んだ。
+
+## 2026-10-08の残読取APIと復号
+
+SlideKeynoteを読取専用で公開し、文書順・非表示・直接位置/回転・文字・画像・group・notesの確認済みsubsetと、全IWA object/field/data参照の不変索引を追加した。PPTXの新コメントthreadとscatter/bubble/多段カテゴリ、placeholder/themeの限定実効継承、ODPのtiming/media/annotationと原本XML構造、SlideDecryptのOOXML Agile/Standard・ODF AES・Keynote iwpv2復号を追加した。通常codecへ復号能力を混ぜず、詳細能力のproviderをSlideDecryptとして分離する。
+
+この変更も全機能の意味解釈完了ではない。残る主な意味モデルはKeynoteの高度書式・表の式/結合・chart軸・固有buildと型の版差、ODPの高度geometry/chart/数式/3D、OOXMLの未解釈文字効果・数式/3D・外部workbook等。これらは原本XMLまたはIWA wire索引で取得し診断する。描画・再生、再暗号化、IRM/証明書、RC4/Blowfishは提供しない。公開capabilityを原本構造取得だけでsupportedへ引き上げない。
+
+追加の確認済みsubset: KeynoteのUTF16文字run・段落/文字/shape style参照・BNC v5表セル・疎なchart grid・transition/build/chunkを投影。現行15.4の新規架空文書から表の文字/数値とchart値を公開consumerで独立照合した。
+
+通常図形/接続線の数値Bezierパス、PPTXの効果/custom geometryの継承、ODP埋込chartのlocal-table/A1 rangeも追加した。既存変更は`ad33088`としてmainへpush済み。以降の追加実装は検査済みの作業ツリーとして残し、tag/releaseは作成しない。
+
+## 2026-10-08のOMML数式とDrawingML 3D直接値
+
+残読取項目から、PPTXのTextRun.equation（OMML型・引数境界・段落内順序）とElement.scene3D/shape3D（直接camera/light、深さ・押出し・bevel・色）を追加。合成Transitional/名前空間置換Strict fixtureで省略値・未知ノード・Choice選択・原本保持・危険な再構成の拒否を検査する。計算・LaTeX変換・描画・実効3D継承・3D model資源・MathMLは後続。実アプリの数式/3D互換性は未検証。ODP/Keynote書込、file-backed/StreamingWriter、旧形式、再暗号化、全機能の意味解釈・描画/再生も残る。
+
+## 2026-10-08のODP数式と高度図形
+
+保存・変換を対象外とした追加依頼で、ODPのMathML（埋込/段落内、token・分数・根号・添字・上下限・行列・annotation原本）とcustom-shapeのEnhancedGeometryを追加。16種類のODFパス命令、数値/modifier/guide参照、viewBox、text area、鏡像とhandle原本を投影する。未知命令は未解決として診断し、欠損参照・引数数・非有限値・展開予算を検査する。数式/geometryの原本は不変の共有storageで値型モデルとJSON契約を保ち、大きなElementのコピーによるstack超過を避ける。ODF 1.3合成fixtureと独立parser・公開consumerが検証範囲。
+
+ODP 3D、guide/geometry式の評価、文字効果の追加解釈、Keynoteの式/結合/chart軸、外部workbook、file-backed reader、旧形式の読取は引き続き残る。ODP/Keynoteの保存、変換、描画/再生と実アプリ互換性は今回追加しない。
+
+
+## 2026-10-08の残読取カテゴリ追加
+
+上記の残読取カテゴリへ、追加文字外観/効果tree、ODF scene/object/extrusionとguide/handle式評価、PPTXの3D継承/model資源・workbook保存値、Keynoteの式token/結合/軸UFF・PreUFF、file-backed ZIP reader・LRU・変更検出、SlideLegacyの旧PPT/Keynote2 XML/SXI読取を追加した。Keynote 15.4生成の式=5とA1:B1結合、LibreOffice生成旧PPTの2枚の順序/本文を独立照合した。ODF 1.2/1.3/1.4の公式RNGに対して世代に合うhandle属性で確認する。
+
+これは各カテゴリの確認済みsubsetで、全世代/全書式を解釈したという意味ではない。Keynoteの未知token/複合書式、旧形式の高度図形、独自engine、全式の再計算・描画/再生は原本/診断の境界を維持する。データ変換、新規保存、ODP/Keynote/旧形式の書込は今回追加しない。実アプリでの失敗ケースもverification.mdへ記録する。
+
+## 読取残件の完了範囲（2026-10-08）
+
+DrawingML評価、Workbook複合参照・共有式、Content MathML、ODP変形/text-path/3D幾何/Flat ODP/ページ別寸法、glTF/GLB資源、Keynote複合式・v5セル書式・軸複合値・parameterized/editable path・build詳細とschema拡張、XML/IWA位置索引・合計cache予算・文書内並列読取・directory file-backedを追加。参照inventoryはKeynote headerにも対応した。各APIの有限な契約と試験はimplementation-spec、support、verificationを正典とする。
+
+保護方式、旧形式、Workbook旧XLS、Keynoteの旧cell storage追加は依頼により今回対象外。新規の保存・変換・再計算・描画/再生も追加しない。任意の未知文書世代、独自engineの実装、glTF extensionの全仕様を互換と保証することは完了条件に含めない。これらは原本・明示拡張器・未解決診断を返す。

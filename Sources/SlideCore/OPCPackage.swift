@@ -17,7 +17,10 @@ package struct OPCPackage: Sendable {
     package let limits: PackageLimits
 
     package init(_ data: Data, limits: PackageLimits) throws {
-        archive = try PackageArchive(data, limits: limits); self.limits = limits
+        try self.init(archive: PackageArchive(data, limits: limits), limits: limits)
+    }
+    package init(archive: PackageArchive, limits: PackageLimits) throws {
+        self.archive = archive; self.limits = limits
         let types = try MarkupNode.parse(archive.read("[Content_Types].xml"), part: "[Content_Types].xml", limits: limits)
         guard types.name == "Types", types.namespace == NS.types else { throw SlideError.corruptedPackage("invalid content types root") }
         var overrides: [String: String] = [:], defs: [String: String] = [:]
@@ -110,10 +113,37 @@ extension OPCPackage {
 extension PresentationFormat {
     /// 内容から形式を検出する。拡張子を信用せずKeynoteをZIPマーカーだけで推測しない。
     public static func detect(_ data: Data, limits: PackageLimits = .init()) throws -> Self {
-        if data.starts(with: [0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1]) { throw SlideError.unsupportedContainer("OLE: 旧PPTまたは暗号化Office") }
-        guard data.starts(with: [0x50,0x4B]) else { throw SlideError.unknownFormat }
+        if data.starts(with: [0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1]) { let compound = try CompoundFile(data: data, limits: limits)
+            do { _ = try compound.stream("PowerPoint Document"); _ = try compound.stream("Current User"); return .ppt }
+            catch SlideError.missingPart { throw SlideError.unsupportedContainer("暗号化Officeまたは非PPTのOLE") } }
+        guard data.starts(with: [0x50,0x4B]) else {
+            if data.starts(with: [0x1f, 0x8b]) || data.starts(with:[0xff,0xfe]) || data.starts(with:[0xfe,0xff]) || String(decoding: data.prefix(256), as: UTF8.self).trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn:"\u{feff}"))).hasPrefix("<") {
+                let root = try MarkupNode.parse(LegacyXMLInput.decode(data, limits: limits), part: "index.apxl", limits: limits)
+                if root.name == "document", root.namespace == "urn:oasis:names:tc:opendocument:xmlns:office:1.0", root.attributes[root.namespace+"|mimetype"] == "application/vnd.oasis.opendocument.presentation" { return .odp }
+                if LegacyXMLInput.isKeynote(root) { return .keynoteLegacy }
+            }
+            throw SlideError.unknownFormat
+        }
         let archive = try PackageArchive(data, limits: limits)
         if archive.entries["mimetype"] != nil, String(data: try archive.read("mimetype"), encoding: .utf8) == "application/vnd.oasis.opendocument.presentation" { return .odp }
+        if let path = LegacyXMLInput.paths.first(where: { archive.entries[$0] != nil }) {
+            let root = try MarkupNode.parse(LegacyXMLInput.decode(archive.read(path), limits: limits), part: path, limits: limits)
+            if LegacyXMLInput.isKeynote(root) { return .keynoteLegacy }
+        }
+        if archive.entries["content.xml"] != nil {
+            let root = try MarkupNode.parse(archive.read("content.xml"), part: "content.xml", limits: limits)
+            if root.namespace == "http://openoffice.org/2000/office", root.name == "document-content", root.attributes["http://openoffice.org/2000/office|class"] == "presentation" { return .sxi }
+        }
+        func isKeynote(_ bytes: Data) throws -> Bool {
+            do { return try IWAFraming.isKeynote(bytes, limit: limits.maxPartBytes) }
+            catch SlideError.corruptedPackage { return false }
+        }
+        if archive.entries[".iwpv2"] != nil || archive.entries[".iwph"] != nil { throw SlideError.unsupportedEncryption(detail: "Keynote .iwpv2保護") }
+        if archive.entries["Index/Document.iwa"] != nil, try isKeynote(archive.read("Index/Document.iwa")) { return .keynote }
+        if archive.entries["Index.zip"] != nil {
+            let index = try PackageArchive(archive.read("Index.zip"), limits: limits)
+            if let path = ["Index/Document.iwa", "Document.iwa"].first(where: { index.entries[$0] != nil }), try isKeynote(index.read(path)) { return .keynote }
+        }
         guard archive.entries["[Content_Types].xml"] != nil else { throw SlideError.unknownFormat }
         return try OPCPackage(data, limits: limits).format
     }

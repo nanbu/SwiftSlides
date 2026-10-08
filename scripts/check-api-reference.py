@@ -37,20 +37,30 @@ def main():
     if args.self_test: return 0
     if not args.output: parser.error('output directory is required')
     root = Path(__file__).resolve().parents[1]
-    graph = json.loads((root / '.build/docc-public-graphs/SwiftSlides.symbols.json').read_text())
-    symbols = {s['identifier']['precise'] for s in graph['symbols'] if '::SYNTHESIZED::' not in s['identifier']['precise']}
+    main_graphs = list((root / '.build/docc-public-graphs').glob('*.symbols.json'))
+    crypto_graphs = list((root / '.build/docc-decrypt-public-graphs').glob('*.symbols.json'))
+    graphs = main_graphs + crypto_graphs
+    if not any(p.name == 'SwiftSlides.symbols.json' for p in main_graphs) or not any(p.name == 'SlideDecrypt.symbols.json' for p in crypto_graphs):
+        print('missing umbrella or optional crypto symbol graph', file=sys.stderr); return 1
+    symbols = {s['identifier']['precise'] for graph in graphs for s in json.loads(graph.read_text())['symbols'] if '::SYNTHESIZED::' not in s['identifier']['precise']}
     output = Path(args.output)
-    rendered = set()
+    rendered = set(); main_rendered = set(); crypto_rendered = set()
     blobs = []
     for path in output.rglob('*'):
         if not path.is_file(): continue
         data = path.read_bytes(); blobs.append((str(path.relative_to(output)), data))
         if path.suffix == '.json' and 'data' in path.parts:
             metadata = json.loads(data).get('metadata', {})
-            if metadata.get('externalID'): rendered.add(metadata['externalID'])
+            if metadata.get('externalID'):
+                rendered.add(metadata['externalID'])
+                (crypto_rendered if path.is_relative_to(output / 'crypto') else main_rendered).add(metadata['externalID'])
     errors = audit(symbols, rendered, blobs)
+    for name, group, pages in [('SwiftSlides', main_graphs, main_rendered), ('SlideDecrypt', crypto_graphs, crypto_rendered)]:
+        expected = {s['identifier']['precise'] for graph in group for s in json.loads(graph.read_text())['symbols'] if '::SYNTHESIZED::' not in s['identifier']['precise']}
+        errors += [name + ': ' + e for e in audit(expected, pages, [])]
     for guide in ('reading', 'cookbook'):
         if not (output / 'data/documentation/swiftslides' / (guide + '.json')).is_file(): errors.append('missing guide: ' + guide)
+    if not (output / 'crypto/data/documentation/slidedecrypt.json').is_file(): errors.append('missing optional crypto module')
     if errors: print('\n'.join(errors), file=sys.stderr); return 1
     print('API reference: %d public symbols rendered; guides and privacy passed' % len(symbols))
     return 0

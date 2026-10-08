@@ -117,6 +117,19 @@ public struct StyleReference: Sendable, Equatable, Codable {
 }
 /// 外側の影の直接値。nilは属性未指定。長さはpt、角度は度、scaleは倍率。
 public struct OuterShadow: Sendable, Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case blurRadius
+        case distance
+        case direction
+        case scaleX
+        case scaleY
+        case skewX
+        case skewY
+        case alignment
+        case rotatesWithShape = "rotateWithShape"
+        case color
+    }
+
     public var blurRadius: Double?
     public var distance: Double?
     public var direction: Double?
@@ -125,13 +138,13 @@ public struct OuterShadow: Sendable, Equatable, Codable {
     public var skewX: Double?
     public var skewY: Double?
     public var alignment: String?
-    public var rotateWithShape: Bool?
+    public var rotatesWithShape: Bool?
     public var color: Color?
-    public init(blurRadius: Double? = nil, distance: Double? = nil, direction: Double? = nil, scaleX: Double? = nil, scaleY: Double? = nil, skewX: Double? = nil, skewY: Double? = nil, alignment: String? = nil, rotateWithShape: Bool? = nil, color: Color? = nil) {
-        self.blurRadius = blurRadius; self.distance = distance; self.direction = direction; self.scaleX = scaleX; self.scaleY = scaleY; self.skewX = skewX; self.skewY = skewY; self.alignment = alignment; self.rotateWithShape = rotateWithShape; self.color = color
+    public init(blurRadius: Double? = nil, distance: Double? = nil, direction: Double? = nil, scaleX: Double? = nil, scaleY: Double? = nil, skewX: Double? = nil, skewY: Double? = nil, alignment: String? = nil, rotatesWithShape: Bool? = nil, color: Color? = nil) {
+        self.blurRadius = blurRadius; self.distance = distance; self.direction = direction; self.scaleX = scaleX; self.scaleY = scaleY; self.skewX = skewX; self.skewY = skewY; self.alignment = alignment; self.rotatesWithShape = rotatesWithShape; self.color = color
     }
 }
-public enum VisualEffect: Sendable, Equatable, Codable { case outerShadow(OuterShadow), unsupported(name: String, xml: String) }
+public enum VisualEffect: Sendable, Equatable, Codable { case outerShadow(OuterShadow), drawing(DrawingEffect), unsupported(name: String, xml: String) }
 public struct ElementEffects: Sendable, Equatable, Codable {
     public var direct: [VisualEffect]?
     public var reference: StyleReference?

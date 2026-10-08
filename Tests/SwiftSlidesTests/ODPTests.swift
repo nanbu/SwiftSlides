@@ -6,7 +6,7 @@ import SwiftSlides
 private let drawNS = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
 private let foNS = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
 @Test func odpStylesResolveDirectNamedAutomaticAndMaster() throws {
-    let index = try ODPCodec().styleIndex(fixture("styles.odp"))
+    let index = try ODPStyleIndex(data: fixture("styles.odp"))
     let inherited = try index.resolve(name:"Direct",family:"graphic")
     #expect(inherited.properties[drawNS+"|fill"] == "none")
     #expect(inherited.properties[drawNS+"|fill-color"] == "#123456")
@@ -42,8 +42,8 @@ private let foNS = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
     #expect(first.notes?.plainText == "Fictional notes")
     #expect(p.preservationSummary.originalBytes == data.count)
     #expect(!p.readDiagnostics.isEmpty)
-    #expect(throws:SlideError.self) { try p.data() }
-    #expect(throws:SlideError.self) { try p.data(as:.pptx) }
+    #expect(throws:SlideError.self) { try p.write().data }
+    #expect(throws:SlideError.self) { try p.write(as:.pptx).data }
     #expect(try p.planWrite().canSave == false)
     #expect(try Presentation.inspect(data).slideCount == 2)
 }
@@ -54,7 +54,7 @@ private let foNS = "urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
         xml = xml.replacingOccurrences(of:"<draw:g ",with:"<draw:custom-shape ").replacingOccurrences(of:"</draw:g>",with:"</draw:custom-shape>")
         parts["content.xml"] = Data(xml.utf8)
     }
-    let p = try Presentation(data:data,options:.init(includeNotes:false))
+    let p = try Presentation(data:data,options:.init(includesNotes:false))
     #expect(p.slides[0].elements[1].kind == .opaque); #expect(p.slides[0].elements[2].kind == .opaque)
     #expect(p.slides[0].elements[2].rawXML?.contains("external.png") == true)
     #expect(p.slides[0].notes == nil); #expect(p.readWarnings.contains { $0.code == .notesOmitted })

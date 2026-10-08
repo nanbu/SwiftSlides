@@ -7,7 +7,7 @@ cmp docs/cookbook.md Sources/SwiftSlides/SwiftSlides.docc/Cookbook.md
 # Query the current product path, then extract only library modules. Some SwiftPM
 # versions attempt extraction for an unbuilt synthetic test runner, and older
 # extractors omit re-exports unless explicitly allowed (SwiftPM issue #9101).
-swift build --target SwiftSlides --scratch-path .build/docc-symbols
+swift build --target SlideDecrypt --scratch-path .build/docc-symbols
 binary_path="$(swift build --scratch-path .build/docc-symbols --show-bin-path)"
 module_path="$binary_path"
 if [[ -e "$binary_path/Modules/SwiftSlides.swiftmodule" ]]; then
@@ -34,19 +34,31 @@ for tool in "$graph_extractor" "$docc_tool"; do
         exit 1
     fi
 done
-for module in SlideCore SlidePPTX SlideODP SwiftSlides; do
+for module in SlideCore SlidePPTX SlideODP SlideKeynote SlideLegacy SwiftSlides; do
     "$graph_extractor" \
         -module-name "$module" \
         -target "$(uname -m)-apple-macosx14.0" \
         -sdk "$sdk_path" \
         -I "$module_path" \
         -Xcc "-fmodule-map-file=$PWD/Sources/CZlib/module.modulemap" \
-        -experimental-allowed-reexported-modules=SlideCore,SlidePPTX,SlideODP \
+        -experimental-allowed-reexported-modules=SlideCore,SlidePPTX,SlideODP,SlideKeynote,SlideLegacy \
         -minimum-access-level public \
         -omit-extension-block-symbols \
         -output-dir "$graph_path"
 done
-mkdir -p .build/docc-public-graphs
+# Optional crypto declarations live in their own module. Do not re-export that
+# product into the ordinary umbrella just to include it in the reference.
+"$graph_extractor" \
+    -module-name SlideDecrypt \
+    -target "$(uname -m)-apple-macosx14.0" \
+    -sdk "$sdk_path" \
+    -I "$module_path" \
+    -Xcc "-fmodule-map-file=$PWD/Sources/CZlib/module.modulemap" \
+    -experimental-allowed-reexported-modules=SwiftSlides,SlideCore,SlidePPTX,SlideODP,SlideKeynote,SlideLegacy \
+    -minimum-access-level public \
+    -omit-extension-block-symbols \
+    -output-dir "$graph_path"
+mkdir -p .build/docc-public-graphs .build/docc-decrypt-public-graphs
 python3 - "$graph_path" <<'PY'
 import json, sys
 from pathlib import Path
@@ -64,14 +76,28 @@ for path in Path(sys.argv[1]).glob('*.symbols.json'):
 for symbol in graph['symbols']:
     if not symbol.get('docComment') and symbol['identifier']['precise'] in origin_comments:
         symbol['docComment'] = origin_comments[symbol['identifier']['precise']]
-# The umbrella graph includes re-exported Core / PPTX / ODP declarations and its own
+# The umbrella graph includes re-exported Core / PPTX / ODP / Keynote declarations and its own
 # convenience extensions. Omit machine paths before producing a public artifact.
 for symbol in graph['symbols']:
     symbol.pop('location', None)
     symbol.pop('sourceOrigin', None)
     for line in symbol.get('docComment', {}).get('lines', []): line.pop('range', None)
     symbol.get('docComment', {}).pop('uri', None)
-Path('.build/docc-public-graphs/SwiftSlides.symbols.json').write_text(json.dumps(graph))
+destination = Path('.build/docc-public-graphs')
+for path in destination.glob('*.symbols.json'): path.unlink()
+destination.joinpath('SwiftSlides.symbols.json').write_text(json.dumps(graph))
+destination = Path('.build/docc-decrypt-public-graphs')
+for path in destination.glob('*.symbols.json'): path.unlink()
+for path in Path(sys.argv[1]).glob('SlideDecrypt*.symbols.json'):
+    crypto = json.loads(path.read_text())
+    for symbol in crypto['symbols']:
+        if not symbol.get('docComment') and symbol['identifier']['precise'] in origin_comments:
+            symbol['docComment'] = origin_comments[symbol['identifier']['precise']]
+        symbol.pop('location', None)
+        symbol.pop('sourceOrigin', None)
+        for line in symbol.get('docComment', {}).get('lines', []): line.pop('range', None)
+        symbol.get('docComment', {}).pop('uri', None)
+    destination.joinpath(path.name).write_text(json.dumps(crypto))
 PY
 "$docc_tool" convert Sources/SwiftSlides/SwiftSlides.docc \
     --additional-symbol-graph-dir .build/docc-public-graphs \
@@ -79,6 +105,14 @@ PY
     --fallback-bundle-identifier dev.nambu.SwiftSlides \
     --fallback-default-module-kind Library \
     --hosting-base-path SwiftSlides \
+    --transform-for-static-hosting \
+    --warnings-as-errors
+"$docc_tool" convert Sources/SlideDecrypt/SlideDecrypt.docc \
+    --additional-symbol-graph-dir .build/docc-decrypt-public-graphs \
+    --output-path "$output/crypto" \
+    --fallback-bundle-identifier dev.nambu.SlideDecrypt \
+    --fallback-default-module-kind Library \
+    --hosting-base-path SwiftSlides/crypto \
     --transform-for-static-hosting \
     --warnings-as-errors
 python3 scripts/check-api-reference.py "$output"

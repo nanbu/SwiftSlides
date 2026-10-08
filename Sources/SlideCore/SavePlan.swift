@@ -19,8 +19,8 @@ public struct SavePlan: Sendable {
     public let modelFingerprint: String
     public let optionsFingerprint: String
     public var canSave: Bool { result != nil && !diagnostics.contains { $0.severity == .error } }
-    public var changedPartCount: Int { actions.filter { $0.kind != .copy }.count }
-    public var changedExpandedBytes: Int { actions.filter { $0.kind == .create || $0.kind == .patch }.reduce(0) { $0 + $1.expandedBytes } }
+    public var changedPartCount: Int { actions.reduce(0) { $0 + ($1.kind != .copy ? 1 : 0) } }
+    public var changedExpandedBytes: Int { actions.reduce(0) { $0 + ($1.kind == .create || $1.kind == .patch ? $1.expandedBytes : 0) } }
     package let result: WriteResult?
     package let codecIdentity: UUID?
     package init(format: PresentationFormat, profile: CapabilityProfile?, options: WriteOptions, actions: [SavePartAction], diagnostics: [SlideDiagnostic],
@@ -80,7 +80,7 @@ extension CodecSet {
             // Comparison uses exact compressed payloads, never CRC alone, and does not inflate untouched assets.
             let limits = PackageLimits(maxEntries: Int.max, maxExpandedBytes: Int.max, maxPartBytes: Int.max)
             let output = try PackageArchive(result.data, limits: limits)
-            let package = try OPCPackage(result.data, limits: limits)
+            let package = try OPCPackage(archive: output, limits: limits)
             let root = try MarkupNode.parse(output.read(package.mainPart), part: package.mainPart, limits: limits)
             profile = root.namespace == NS.strictP ? .ooxmlStrict : .ooxmlTransitional
             let original = presentation.storage?.archive
@@ -103,7 +103,7 @@ extension CodecSet {
                      codecIdentity: try? codec(for: destination).identity)
     }
 
-    public func encoded(_ presentation: Presentation, using plan: SavePlan, options: WriteOptions? = nil) throws -> WriteResult {
+    public func write(_ presentation: Presentation, using plan: SavePlan, options: WriteOptions? = nil) throws -> WriteResult {
         try Task.checkCancellation()
         let selected = try codec(for: plan.format)
         guard selected.identity == plan.codecIdentity,
@@ -116,10 +116,10 @@ extension CodecSet {
         try Task.checkCancellation(); return result
     }
 
-    public func save(_ presentation: Presentation, to url: URL, using plan: SavePlan, options: WriteOptions? = nil) throws -> WriteResult {
+    public func write(_ presentation: Presentation, to url: URL, using plan: SavePlan, options: WriteOptions? = nil) throws -> WriteResult {
         try Task.checkCancellation()
         try validateDestination(url, format: plan.format)
-        let result = try encoded(presentation, using: plan, options: options)
+        let result = try write(presentation, using: plan, options: options)
         try Task.checkCancellation()
         try FileTarget(url).write(result.data)
         return result
@@ -130,16 +130,16 @@ extension CodecSet {
     private func planWriteSync(_ presentation: Presentation, format: PresentationFormat?, options: WriteOptions) throws -> SavePlan {
         try planWrite(presentation, as: format, options: options)
     }
-    @concurrent public func encoded(_ presentation: Presentation, using plan: SavePlan, options: WriteOptions? = nil) async throws -> WriteResult {
-        try encodedSync(presentation, using: plan, options: options)
+    @concurrent public func write(_ presentation: Presentation, using plan: SavePlan, options: WriteOptions? = nil) async throws -> WriteResult {
+        try writePlanSync(presentation, using: plan, options: options)
     }
-    private func encodedSync(_ presentation: Presentation, using plan: SavePlan, options: WriteOptions?) throws -> WriteResult {
-        try encoded(presentation, using: plan, options: options)
+    private func writePlanSync(_ presentation: Presentation, using plan: SavePlan, options: WriteOptions?) throws -> WriteResult {
+        try write(presentation, using: plan, options: options)
     }
-    @concurrent public func save(_ presentation: Presentation, to url: URL, using plan: SavePlan, options: WriteOptions? = nil) async throws -> WriteResult {
-        try saveSync(presentation, to: url, using: plan, options: options)
+    @concurrent public func write(_ presentation: Presentation, to url: URL, using plan: SavePlan, options: WriteOptions? = nil) async throws -> WriteResult {
+        try writePlanURLSync(presentation, to: url, using: plan, options: options)
     }
-    private func saveSync(_ presentation: Presentation, to url: URL, using plan: SavePlan, options: WriteOptions?) throws -> WriteResult {
-        try save(presentation, to: url, using: plan, options: options)
+    private func writePlanURLSync(_ presentation: Presentation, to url: URL, using plan: SavePlan, options: WriteOptions?) throws -> WriteResult {
+        try write(presentation, to: url, using: plan, options: options)
     }
 }

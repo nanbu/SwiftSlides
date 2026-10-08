@@ -14,7 +14,7 @@ public struct ReferenceLocation: Sendable, Equatable, Codable {
 
 /// 意味を確認した参照と、解釈できない参照候補を区別する。
 public struct PackageReference: Sendable, Equatable, Codable {
-    public enum Kind: String, Sendable, Codable { case relationship, relationshipAttribute, timing, connector, unknown }
+    public enum Kind: String, Sendable, Codable { case relationship, relationshipAttribute, timing, connector, nativeObject, nativeData, unknown }
     public enum Knowledge: String, Sendable, Codable { case known, unknown }
     public let kind: Kind
     public let knowledge: Knowledge

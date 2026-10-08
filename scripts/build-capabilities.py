@@ -10,13 +10,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OPERATIONS = {"inspect", "read", "create", "edit", "preserve", "convert", "render", "play"}
 STATUSES = {"supported", "partial", "preserveOnly", "unsupported", "notApplicable", "unverified"}
-PROFILES_BY_FORMAT = {"pptx": {"ooxmlTransitional", "ooxmlStrict"}, "pptm": {"ooxmlTransitional", "ooxmlStrict"}, "odp": {"odf12", "odf13", "odf14"}}
+PROFILES_BY_FORMAT = {"pptx": {"ooxmlTransitional", "ooxmlStrict", "ooxmlAgile", "ooxmlStandard"}, "pptm": {"ooxmlTransitional", "ooxmlStrict"}, "odp": {"odf12", "odf13", "odf14"}, "keynote": {"keynoteIWA"}, "ppt": {"pptBinary"}, "keynoteLegacy": {"keynoteXML"}, "sxi": {"impressXML"}}
 FORMATS = set(PROFILES_BY_FORMAT)
 
 
 def regression_tests(source):
     # helper関数を証拠として登録しない。現行のSwift Testing宣言を扱う。
-    return set(re.findall(r"@Test(?:\([^)]*\))?\s*(?:@\w+\s*)*func\s+(\w+)\s*\(", source))
+    return set(re.findall(r"@Test(?:\((?:[^()]|\([^()]*\))*\))?\s*(?:@\w+\s*)*func\s+(\w+)\s*\(", source))
 
 
 def validate(data, features, tests, fixtures):
@@ -39,7 +39,9 @@ def validate(data, features, tests, fixtures):
     seen = set()
     used = set()
     for item in data["capabilities"]:
-        key = tuple(item[k] for k in ["format", "profile", "feature", "operation"])
+        if item.get("provider") not in (None,"SlideDecrypt"):
+            raise ValueError("不明な提供製品")
+        key = tuple(item[k] for k in ["format", "profile", "feature", "operation"]) + (item.get("provider"),)
         if key in seen:
             raise ValueError("能力宣言の重複")
         seen.add(key)
@@ -60,9 +62,9 @@ def validate(data, features, tests, fixtures):
         raise ValueError("参照されない証拠")
 
 
-def render(data, formats=("pptm", "pptx"), module="PPTX"):
+def render(data, formats=("pptm", "pptx"), module="PPTX", provider=None):
     data = copy.deepcopy(data)
-    data["capabilities"] = [item for item in data["capabilities"] if item["format"] in formats]
+    data["capabilities"] = [item for item in data["capabilities"] if item["format"] in formats and item.get("provider") == provider]
     used = {ref for item in data["capabilities"] for ref in item["evidence"]}
     data["evidence"] = [item for item in data["evidence"] if item["id"] in used]
     def literal(value):
@@ -147,8 +149,8 @@ def main():
     fixtures = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in (ROOT / "Tests/SwiftSlidesTests/Fixtures").iterdir() if p.is_file()}
     validate(data, features, tests, fixtures)
-    for module, formats in [("PPTX", ("pptm", "pptx")), ("ODP", ("odp",))]:
-        output = render(data, formats, module)
+    for module, formats in [("PPTX", ("pptm", "pptx")), ("ODP", ("odp",)), ("Keynote", ("keynote",)), ("Legacy", ("ppt", "keynoteLegacy", "sxi")), ("Decrypt", ("pptx", "odp", "keynote"))]:
+        output = render(data, formats, module, "SlideDecrypt" if module == "Decrypt" else None)
         target = ROOT / ("Sources/Slide" + module + "/FeatureCapabilities.swift")
         if args.check:
             if not target.exists() or target.read_text() != output:

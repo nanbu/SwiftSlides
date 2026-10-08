@@ -122,7 +122,7 @@ def verify(path, cli):
                 value = slide['transition']; counts['transition'] += 1
                 for key, attr in [('advanceAfterMilliseconds','advTm'),('durationMilliseconds','{'+P14+'}dur')]: assert value.get(key) == (int(transition.attrib[attr]) if attr in transition.attrib else None)
                 assert value.get('speed') == transition.get('spd')
-                if 'advClick' in transition.attrib: assert value['advanceOnClick'] == (transition.attrib['advClick'] in ['1','true'])
+                if 'advClick' in transition.attrib: assert value['advancesOnClick'] == (transition.attrib['advClick'] in ['1','true'])
                 effects = [n for n in transition if n.tag not in {f'{{{p}}}sndAc',f'{{{p}}}extLst'}]
                 assert value.get('effect') == (effects[0].tag.split('}')[-1] if effects else None)
             timing = root.find(f'{{{p}}}timing')

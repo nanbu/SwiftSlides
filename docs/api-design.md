@@ -45,7 +45,7 @@ flowchart LR
 
 ## 入口と形式
 
-現在の`Presentation(data:)`、`read`、`inspect`、`encoded`、`data`、`write`、`CodecSet`は維持する。新しい引数は既定値を持つoverloadまたは新しいメソッドとして追加する。形式指定・結果型の語彙はSwiftSheetsに寄せるが、既存動作の変更は移行段階まで行わない。
+現在の`Presentation(data:)`、`read`、`inspect`、`write`、`CodecSet`は維持する。新しい引数は既定値を持つoverloadまたは新しいメソッドとして追加する。形式指定・結果型の語彙はSwiftSheetsに寄せるが、既存動作の変更は移行段階まで行わない。
 
 宣言案:
 
@@ -55,11 +55,11 @@ extension Presentation {
         options: ReadOptions = .init()) throws -> ReadResult
     public static func inspect(contentsOf url: URL,
         options: InspectOptions) throws -> PresentationSummary
-    public func encoded(as format: PresentationFormat? = nil,
+    public func write(as format: PresentationFormat? = nil,
         options: WriteOptions = .init()) throws -> WriteResult
     public func planWrite(as format: PresentationFormat,
         options: SaveOptions = .init()) throws -> SavePlan
-    public func save(to url: URL, using plan: SavePlan) throws -> SaveResult
+    public func write(to url: URL, using plan: SavePlan) throws -> SaveResult
     public static func convert(_ input: URL, to output: URL,
         as format: PresentationFormat, options: ConversionOptions = .init())
         throws -> ConversionResult
@@ -198,7 +198,7 @@ let plan = try deck.planWrite(as: .odp,
 print(plan.issues)
 // 保存拒否・未知参照・変換損失があればplan.canSave == false
 guard plan.canSave else { throw MyError.cannotConvert }
-let result = try deck.save(to: output, using: plan)
+let result = try deck.write(to: output, using: plan)
 ```
 
 `SavePlan`はdestination profile、create/patch/copy/remove actions、issues、estimated changed parts/expanded bytes、source/model/options fingerprintを持つ。見積量はプロセス最大RSSの保証ではない。計画は全診断を返し、実行不能でも「何が足りないか」を読める。破損など計画自体が成立しない入力はthrow。
@@ -219,7 +219,7 @@ let result = try deck.save(to: output, using: plan)
 
 ### 結果と診断
 
-`ReadResult`はPresentationとdiagnostics、`WriteResult`はDataとdiagnostics（既存warningsは維持）。ファイル・ストリーム保存はData全体を返す必要のない`SaveResult`を追加する。`ConversionResult`は読取・保存の両診断とconversion planを持つ。警告を落とす`data()`の便利入口は既存互換用に残し、危険な編集・変換の説明では結果型を使う。
+`ReadResult`はPresentationとdiagnostics、`WriteResult`はDataとdiagnostics（既存warningsは維持）。ファイル・ストリーム保存はData全体を返す必要のない`SaveResult`を追加する。`ConversionResult`は読取・保存の両診断とconversion planを持つ。0.1.0で旧data()入口を削除し、保存bytesと警告を持つ結果型を使う。
 
 診断はstable code/FeatureID、severity、stage、subject、slide/element/part/field位置、action、loss domain、count、説明を持つ。安定コードはRawRepresentableのstructで拡張可能にする。保持・未解決・未検証・書換え・損失を区別し、表示文言をプログラム判定に使わない。
 

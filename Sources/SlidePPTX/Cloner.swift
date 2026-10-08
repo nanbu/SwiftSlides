@@ -29,7 +29,7 @@ enum PPTXCloner {
         let sourceFormat = source.sourceFormat ?? .pptx
         let encoded = try PPTXWriter(source, format: sourceFormat, options: .init()).write()
         let snapshot = try PPTXCodec(macroEnabled: sourceFormat == .pptm).read(encoded.data,
-            options: .init(limits: source.storage?.limits ?? .init(), includeNotes: source.storage?.notesOmitted != true)).presentation
+            options: .init(limits: source.storage?.limits ?? .init(), includesNotes: source.storage?.notesOmitted != true)).presentation
         guard let storage = snapshot.storage, let sourcePart = storage.slidePaths[snapshot.slides[sourceIndex].id] else {
             throw SlideError.unsafeEdit("取り込み原本のスライドがありません")
         }

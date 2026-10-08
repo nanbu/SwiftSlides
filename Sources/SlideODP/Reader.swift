@@ -2,32 +2,32 @@ import Foundation
 import SlideCore
 
 /// ODF ZIP presentationの読取専用codec。保存・変換は拒否する。
-public struct ODPCodec: PresentationCodec {
-    public let format = PresentationFormat.odp
-    public init() {}
-    public var capabilities: CodecCapabilities {
+package struct ODPCodec: PresentationCodec {
+    package let format = PresentationFormat.odp
+    package init() {}
+    package var capabilities: CodecCapabilities {
         .init(format:.odp,operations:[.inspect:.partial,.read:.partial,.create:.unsupported,.edit:.unsupported,.preserve:.preserveOnly,.convert:.unsupported,.render:.unsupported,.play:.unsupported],notes:"ODF 1.2/1.3/1.4 ZIPの基本読取。原本保持、書込は未提供。書式索引の限定解決を別途返す。",features:ODPFeatureCapabilities.features(for:.odp))
     }
-    public func read(_ data: Data, options: ReadOptions = .init()) throws -> ReadResult { try ODPDocument(data,options:options).read() }
-    public func inspect(_ data: Data, limits: PackageLimits = .init()) throws -> PresentationSummary { try ODPDocument(data,options:.init(limits:limits,includeNotes:false)).summary }
-    public func write(_ presentation: Presentation, options: WriteOptions = .init()) throws -> WriteResult { throw SlideError.unsafeEdit("ODP codecは読取専用です。ODP保存・変換は未提供です") }
-    /// 直接値と分離された書式索引。原本bytesから構築する。
-    public func styleIndex(_ data: Data, limits: PackageLimits = .init()) throws -> ODPStyleIndex { try ODPDocument(data,options:.init(limits:limits)).styles }
+    package func read(_ data: Data, options: ReadOptions = .init()) throws -> ReadResult { try ODPDocument(data,options:options).read() }
+    package func inspect(_ data: Data, options: InspectOptions = .init()) throws -> PresentationSummary { try ODPDocument(data,options:.init(limits:options.limits,includesNotes:false)).summary }
+    package func write(_ presentation: Presentation, options: WriteOptions = .init()) throws -> WriteResult { throw SlideError.unsafeEdit("ODP codecは読取専用です。ODP保存・変換は未提供です") }
 }
 extension Codec { public static let odp = Codec(ODPCodec()) }
 
 struct ODPDocument: Sendable {
+    var cacheStatistics: ReadingCacheStatistics? { archive.cacheStatistics.adding(pageIndex.cacheStatistics) }
     let data: Data
     let archive: PackageArchive
     let options: ReadOptions
     let styles: ODPStyleIndex
-    let pages: [String]
+    let pages: [ODPPageLocation]
+    let pageIndex: ODPPageIndex
     let descriptors: [SlideDescriptor]
     let summary: PresentationSummary
     let initialWarnings: [SlideWarning]
-    init(_ data: Data, options: ReadOptions) throws {
+    init(_ data: Data, options: ReadOptions, archive supplied: PackageArchive? = nil) throws {
         self.data = data; self.options = options
-        let archive = try PackageArchive(data,limits:options.limits); self.archive = archive
+        let archive = try supplied ?? (data.starts(with:[0x50,0x4b]) ? PackageArchive(data,limits:options.limits) : FlatODP.archive(data,limits:options.limits)); self.archive = archive
         guard String(data:try archive.read("mimetype"),encoding:.utf8) == ODF.mime else { throw SlideError.unknownFormat }
         func tree(_ part: String, rootName: String) throws -> MarkupNode {
             let node = try MarkupNode.parse(archive.read(part),part:part,limits:options.limits)
@@ -46,14 +46,19 @@ struct ODPDocument: Sendable {
             types[path] = type
         }
         guard types["/"] == ODF.mime, types["content.xml"] == "text/xml", types["styles.xml"] == "text/xml" else { throw SlideError.corruptedPackage("必須ODP manifest entryがありません") }
-        let content = try tree("content.xml",rootName:"document-content"), styleRoot = try tree("styles.xml",rootName:"document-styles")
+        let contentBytes = try archive.read("content.xml")
+        let content = try MarkupNode.parse(contentBytes,part:"content.xml",limits:options.limits,pruning:[ODF.draw+"|page"]), styleRoot = try tree("styles.xml",rootName:"document-styles")
+        guard content.namespace == ODF.office, content.name == "document-content" else { throw SlideError.corruptedPackage("ODP content root") }
         guard content.odf(ODF.office,"version") == styleRoot.odf(ODF.office,"version"), content.odf(ODF.office,"version") == mv else { throw SlideError.corruptedPackage("ODF version不一致") }
         let styles = try ODPStyleIndex(content:content,styles:styleRoot,limits:options.limits); self.styles = styles
         guard let body = content.child("body",ns:ODF.office), let presentation = body.child("presentation",ns:ODF.office) else { throw SlideError.corruptedPackage("ODP presentation本体がありません") }
         let pageNodes = presentation.children(ODF.draw,"page")
         guard let first = pageNodes.first else { throw SlideError.corruptedPackage("ODPページがありません") }
         let size = try styles.pageSize(master:first.odf(ODF.draw,"master-page-name"))
-        var pages: [String] = [], descriptors: [SlideDescriptor] = [], ids: Set<String> = []
+        let indexedBytes = try XMLSubtreeIndex.utf8(contentBytes)
+        let ranges = try XMLSubtreeIndex.ranges(indexedBytes,selected:Set(pageNodes.compactMap(\.sourceElementIndex)))
+        pageIndex = try .init(archive:archive,initial:indexedBytes,cacheBytes:options.indexedCacheBytes)
+        var pages: [ODPPageLocation] = [], descriptors: [SlideDescriptor] = [], ids: Set<String> = []
         let reservedPageIDs = Set(pageNodes.compactMap { $0.odf("http://www.w3.org/XML/1998/namespace","id") ?? $0.odf(ODF.draw,"id") })
         for (i,page) in pageNodes.enumerated() {
             try Task.checkCancellation()
@@ -65,8 +70,9 @@ struct ODPDocument: Sendable {
             }
             guard ids.insert(id).inserted else { throw SlideError.corruptedPackage("重複ODP page ID") }
             let pageSize = try styles.pageSize(master:page.odf(ODF.draw,"master-page-name"))
-            guard abs(pageSize.width-size.width) < 0.00001, abs(pageSize.height-size.height) < 0.00001 else { throw SlideError.unsupportedContainer("異なるODPページ寸法") }
-            pages.append(page.xml); descriptors.append(.init(id:id,name:page.odf(ODF.draw,"name") ?? "",index:i))
+            _ = pageSize
+            guard let ordinal = page.sourceElementIndex, let range = ranges[ordinal] else { throw SlideError.corruptedPackage("ODP page位置なし") }
+            pages.append(.init(range:range,namespaces:page.namespaces)); descriptors.append(.init(id:id,name:page.odf(ODF.draw,"name") ?? "",index:i))
         }
         self.pages = pages; self.descriptors = descriptors
         var metadata = Metadata()
@@ -97,9 +103,13 @@ struct ODPDocument: Sendable {
         return try decode(index,options:options).0
     }
     private func decode(_ index: Int, options: ReadOptions) throws -> (SlideReadResult,Int,Int) {
-        let node = try MarkupNode.parse(Data(pages[index].utf8),part:"content.xml",limits:options.limits)
+        let node = try pageIndex.page(pages[index],limits:options.limits)
         let parser = ODPPageParser(archive:archive,styles:styles,options:options,slideID:descriptors[index].id,contentTypes:Dictionary(uniqueKeysWithValues:summary.parts.compactMap { part in part.contentType.map { (part.path,$0) } }))
-        return (try parser.read(node,descriptor:descriptors[index]),parser.tableCells,parser.textBytes)
+        let result = try parser.read(node,descriptor:descriptors[index])
+        var slide = result.slide
+        let size = try styles.pageSize(master:node.odf(ODF.draw,"master-page-name"))
+        if size != summary.size { slide.sizeOverride = size }
+        return (.init(slide:slide,warnings:result.warnings),parser.tableCells,parser.textBytes)
     }
     func read() throws -> ReadResult {
         var slides: [Slide] = [], warnings = initialWarnings
@@ -111,13 +121,13 @@ struct ODPDocument: Sendable {
             slides.append(result.slide); warnings += result.warnings
         }
         var p = Presentation(size:summary.size,slides:slides,metadata:summary.metadata)
-        let storage = Preservation(data:data,archive:archive,mainPart:"content.xml",limits:options.limits,originalSize:summary.size,originalSlides:slides,originalMetadata:summary.metadata,originalTheme:p.theme,slidePaths:Dictionary(uniqueKeysWithValues:slides.map { ($0.id,"content.xml") }),notesPaths:[:],notesOmitted:!options.includeNotes)
+        let storage = Preservation(data:data,archive:archive,mainPart:"content.xml",limits:options.limits,originalSize:summary.size,originalSlides:slides,originalMetadata:summary.metadata,originalTheme:p.theme,slidePaths:Dictionary(uniqueKeysWithValues:slides.map { ($0.id,"content.xml") }),notesPaths:[:],notesOmitted:!options.includesNotes)
         p.preserve(storage,format:.odp,warnings:warnings,parts:summary.parts,themes:[])
         return .init(presentation:p)
     }
 }
 
-private final class ODPPageParser {
+final class ODPPageParser {
     let archive: PackageArchive
     let styles: ODPStyleIndex
     let options: ReadOptions
@@ -130,8 +140,8 @@ private final class ODPPageParser {
     var textBytes = 0
     let contentTypes: [String:String]
     init(archive: PackageArchive, styles: ODPStyleIndex, options: ReadOptions, slideID: String, contentTypes: [String:String]) { self.archive = archive; self.styles = styles; self.options = options; self.slideID = slideID; self.contentTypes = contentTypes }
-    func warn(_ node: MarkupNode, _ message: String, code: SlideWarning.Code = .unsupportedContent, id: String? = nil) {
-        warnings.add(code,part:"content.xml",element:node.name,message:message,slideID:slideID,elementID:id)
+    func warn(_ node: MarkupNode, _ message: String, code: SlideWarning.Code = .unsupportedContent, id: String? = nil, feature: FeatureID? = nil) {
+        warnings.add(code,part:"content.xml",element:node.name,message:message,feature:feature,slideID:slideID,elementID:id)
     }
     func read(_ node: MarkupNode, descriptor: SlideDescriptor) throws -> SlideReadResult {
         func reserve(_ node: MarkupNode) {
@@ -142,9 +152,11 @@ private final class ODPPageParser {
         var elements: [Element] = [], notes: TextBody?
         for child in node.children {
             if child.namespace == ODF.presentation, child.name == "notes" {
-                if options.includeNotes {
+                if options.includesNotes {
                     let paragraphs = try child.descendants("p",ns:ODF.text).map { try paragraph($0) }; notes = .init(paragraphs:paragraphs)
                 } else { warn(child,"ノート読取を省略しました。原本は保持します",code:.notesOmitted) }
+            } else if child.namespace == ODF.anim || (child.namespace == ODF.presentation && child.name == "animations") || (child.namespace == ODF.office && child.name == "annotation") {
+                // 時間構造・コメントは描画要素へ追加しない。
             } else { elements.append(try element(child)) }
         }
         var slide = Slide(id:descriptor.id,name:descriptor.name,elements:elements,notes:notes)
@@ -153,6 +165,7 @@ private final class ODPPageParser {
         if resolved.properties[ODF.key(ODF.presentation,"visibility")] == "hidden" { slide.isHidden = true }
         slide.background = try fill(styles.direct(name:node.odf(ODF.draw,"style-name"),family:"drawing-page"))
         if !resolved.properties.isEmpty { warn(node,"ページ書式は原本とstyle索引に保持します。モデル背景は直接値のみです",code:.uninterpretedFormatting) }
+        try readAdvanced(node, into: &slide)
         return .init(slide:slide,warnings:warnings.result)
     }
     func element(_ node: MarkupNode) throws -> Element {
@@ -165,26 +178,34 @@ private final class ODPPageParser {
         }
         guard ids.insert(id).inserted else { throw SlideError.corruptedPackage("重複ODP element ID: \(id)") }
         let name = node.odf(ODF.draw,"name") ?? ""
+        let transform = try node.odf(ODF.draw, "transform").map { try ODPTransformReader.read($0, angleUnit: options.odfTransformAngleUnit, maxOperations: options.limits.maxXMLNodes) }
+        let engine = node.odf(ODF.draw, "engine")
         func opaque(_ message: String) throws -> Element {
-            warn(node,message,id:id); var e = Element(id:id,name:name,kind:.opaque,geometry:nil)
+            warn(node,message,id:id); var e = Element(id:id,name:name,kind:.opaque,geometry:nil); e.transform2D = transform; e.geometryEngine = engine
             if node.namespace == ODF.draw {
                 let paragraphs = node.children.filter { $0.namespace == ODF.text && ["p","h"].contains($0.name) }
                 if !paragraphs.isEmpty { e.text = .init(paragraphs:try paragraphs.map { try paragraph($0) }) }
             }
-            e.setRawXML(node.xml); return e
+            e.sourceProperties = try SourceXMLNode(node); e.nativeFeatures = [try nativeFeature(node)]; e.media = try media(node); e.setRawXML(node.xml); return e
         }
+        if let spatial = try spatialElement(node, id: id, name: name) { return spatial }
         guard node.namespace == ODF.draw else { return try opaque("未対応namespace/要素を原本に保持します") }
-        if node.odf(ODF.draw,"transform") != nil { return try opaque("transform付き要素は未解釈として保持します") }
         let styleName = node.odf(ODF.draw,"style-name")
         if let styleName {
             let resolved = try styles.resolve(name:styleName,family:"graphic")
             warn(node,resolved.unresolved.isEmpty ? "継承書式はstyle索引に保持します。モデルは直接値のみです" : "未解決style: \(resolved.unresolved.joined(separator:", "))",code:.uninterpretedFormatting,id:id)
         }
         if node.name == "g" {
-            var e = Element(id:id,name:name,kind:.group,geometry:nil,children:try node.children.map { try element($0) }); e.setRawXML(node.xml); return e
+            var e = Element(id:id,name:name,kind:.group,geometry:nil,children:try node.children.map { try element($0) }); e.transform2D = transform
+            e.sourceProperties = try SourceXMLNode(node); e.nativeFeatures = [try nativeFeature(node)]; e.media = try media(node); e.setRawXML(node.xml); return e
         }
-        let allowed = ["rect","ellipse","line","connector","frame"]
+        let allowed = ["rect","ellipse","line","connector","frame","custom-shape"]
         guard allowed.contains(node.name) else { return try opaque("未対応ODP図形/geometryを保持します") }
+        var providedGeometry: EnhancedGeometry?
+        if node.name == "custom-shape", let engine, engine != "com.sun.star.drawing.EnhancedCustomShapeEngine" {
+            providedGeometry = try options.geometryProvider?(.init(engine: engine, source: SourceXMLNode(node)))
+            if providedGeometry == nil { return try opaque("未登録の独自engine: \(engine)") }
+        }
         var frame: Rect?
         if node.name == "line" || node.name == "connector" {
             let attrs = ["x1","y1","x2","y2"].map { node.odf(ODF.svg,$0) }
@@ -199,14 +220,18 @@ private final class ODPPageParser {
                 frame = .init(x:values[0],y:values[1],width:values[2],height:values[3])
             } else { warn(node,"図形位置/寸法は未解決です",code:.uninterpretedFormatting,id:id) }
         }
-        var e = Element(id:id,name:name,frame:frame,geometry:node.name == "ellipse" ? .ellipse : .rectangle,fill:try fill(styles.direct(name:styleName,family:"graphic")))
+        var e = Element(id:id,name:name,frame:frame,geometry:node.name == "ellipse" ? .ellipse : .rectangle,fill:try fill(styles.direct(name:styleName,family:"graphic"))); e.transform2D = transform; e.geometryEngine = engine
         if node.name == "line" || node.name == "connector" {
             e.kind = .connector; e.geometry = .line
-            e.flipHorizontal = try ODF.length(node.odf(ODF.svg,"x2")!) < ODF.length(node.odf(ODF.svg,"x1")!)
-            e.flipVertical = try ODF.length(node.odf(ODF.svg,"y2")!) < ODF.length(node.odf(ODF.svg,"y1")!)
+            e.isFlippedHorizontally = try ODF.length(node.odf(ODF.svg,"x2")!) < ODF.length(node.odf(ODF.svg,"x1")!)
+            e.isFlippedVertically = try ODF.length(node.odf(ODF.svg,"y2")!) < ODF.length(node.odf(ODF.svg,"y1")!)
         }
         if node.name == "frame" {
             let children = node.children.filter { !($0.namespace == ODF.svg && ["title","desc"].contains($0.name)) }
+            if let equation = try frameEquation(node) {
+                e.kind = .opaque; e.geometry = nil; e.equation = equation
+                e.sourceProperties = try SourceXMLNode(node); e.nativeFeatures = [try nativeFeature(node)]; e.setRawXML(node.xml); return e
+            }
             guard children.count == 1, let child = children.first else { return try opaque("複数内容/空のframeを保持します") }
             if child.namespace == ODF.draw, child.name == "image" {
                 guard let href = child.odf(ODF.xlink,"href") else { throw SlideError.corruptedPackage("画像参照がありません") }
@@ -219,13 +244,24 @@ private final class ODPPageParser {
                 e.isTextBox = true; e.text = try text(child)
             } else if child.namespace == ODF.table, child.name == "table" {
                 e.kind = .table; e.geometry = nil; e.table = try table(child)
+            } else if child.namespace == ODF.draw,child.name == "object",let chart=try chartObject(child) {
+                e.kind = .opaque;e.geometry=nil;e.chart=chart
             } else { return try opaque("埋込object/未対応frameを保持します") }
         } else {
+            if node.name == "custom-shape" {
+                let geometries = node.children(ODF.draw,"enhanced-geometry")
+                guard geometries.count == 1 || providedGeometry != nil else { return try opaque("高度geometryが不在/重複したcustom-shapeを原本に保持します") }
+                e.geometry = nil; e.enhancedGeometry = try providedGeometry ?? enhancedGeometry(geometries[0], elementID: id)
+                if let geometry = geometries.first {
+                    e.textPath = try textPath(geometry)
+                    if geometry.odf(ODF.draw, "extrusion") != nil { e.spatialGeometry = try spatialGeometry(geometry, extrusion: true) }
+                }
+            }
             let paragraphs = node.children.filter { $0.namespace == ODF.text && ["p","h","list"].contains($0.name) }
             if !paragraphs.isEmpty { e.text = try text(node) }
-            for child in node.children where child.namespace != ODF.text || !["p","h","list"].contains(child.name) { warn(child,"未対応図形内容を原本に保持します",id:id) }
+            for child in node.children where !(child.namespace == ODF.draw && child.name == "enhanced-geometry" && node.name == "custom-shape") && (child.namespace != ODF.text || !["p","h","list"].contains(child.name)) { warn(child,"未対応図形内容を原本に保持します",id:id) }
         }
-        e.setRawXML(node.xml); return e
+        e.sourceProperties = try SourceXMLNode(node); e.nativeFeatures = [try nativeFeature(node)]; e.media = try media(node); e.setRawXML(node.xml); return e
     }
     func fill(_ attrs: [String:String]) throws -> Fill? {
         guard let kind = attrs[ODF.key(ODF.draw,"fill")] else { return nil }
@@ -252,6 +288,7 @@ private final class ODPPageParser {
         if let value = property("color") { result.color = try color(value) }
         result.language = property("language")
         if node.odf(ODF.text,"style-name") != nil { warn(node,"文字style参照は原本とstyle索引に保持します",code:.uninterpretedFormatting) }
+        result.appearance = try odfTextAppearance(properties)
         return result
     }
     func text(_ node: MarkupNode) throws -> TextBody {
@@ -278,6 +315,9 @@ private final class ODPPageParser {
                 switch item {
                 case .text(let value): try append(value,style:style,link:link)
                 case .node(let child):
+                    if child.namespace == ODF.draw, child.name == "frame", let equation = try frameEquation(child) {
+                        var run = TextRun(equation.lexicalText,style:style,link:link); run.equation = equation; runs.append(run); continue
+                    }
                     guard child.namespace == ODF.text else { warn(child,"未知inlineを原本に保持します"); continue }
                     switch child.name {
                     case "s":
@@ -289,9 +329,7 @@ private final class ODPPageParser {
                     case "line-break": try append("\n",style:style,link:link)
                     case "span":
                         let direct = try textStyle(child)
-                        var merged = style
-                        if let family = direct.font.family { merged.font.family = family }; if let size = direct.font.size { merged.font.size = size }
-                        if let bold = direct.bold { merged.bold = bold }; if let italic = direct.italic { merged.italic = italic }; if let color = direct.color { merged.color = color }
+                        let merged = style.overlaying(direct)
                         try visit(child,style:merged,link:link)
                     case "a":
                         guard let href = child.odf(ODF.xlink,"href") else { throw SlideError.corruptedPackage("ODPリンク参照がありません") }
@@ -346,12 +384,18 @@ private final class ODPPageParser {
                 }
                 if value.formula != nil { warn(cell,"式とキャッシュを読みます。式は再計算しません") }
                 value.fill = try fill(styles.direct(name:cell.odf(ODF.table,"style-name"),family:"table-cell"))
+                let projectedBytes=value.text.plainText.utf8.count,remainingText=min(options.limits.maxPartBytes,options.limits.maxExpandedBytes)-textBytes
+                guard projectedBytes == 0 || repeatCount-1 <= remainingText/projectedBytes else { throw SlideError.limitExceeded("ODP反復セル文字の展開予算") }
+                textBytes += projectedBytes*(repeatCount-1)
                 cells += Array(repeating:value,count:repeatCount)
             }
             let n = try repeated(row,"number-rows-repeated")
             guard !cells.isEmpty, n <= (options.limits.maxTableCells - tableCells) / cells.count else { throw SlideError.limitExceeded("ODP table反復展開予算") }
             tableCells += n * cells.count
             let h = try dimension(row,family:"table-row",name:"row-height")
+            let projectedBytes=cells.reduce(0) { $0+$1.text.plainText.utf8.count },remainingText=min(options.limits.maxPartBytes,options.limits.maxExpandedBytes)-textBytes
+            guard projectedBytes == 0 || n-1 <= remainingText/projectedBytes else { throw SlideError.limitExceeded("ODP反復行文字の展開予算") }
+            textBytes += projectedBytes*(n-1)
             rows += Array(repeating:cells,count:n); heights += Array(repeating:h,count:n)
         }
         guard let first = rows.first, rows.allSatisfy({ $0.count == first.count }) else { throw SlideError.corruptedPackage("空または非矩形ODP table") }
@@ -363,9 +407,16 @@ private final class ODPPageParser {
 
 
 extension ODPCodec: SlideReadingCodec {
-    public func openSlides(_ data: Data, options: ReadOptions) throws -> any PresentationSlideSource { try ODPDocument(data,options:options) }
+    package func openSlides(_ data: Data, options: ReadOptions) throws -> any PresentationSlideSource { try ODPDocument(data,options:options) }
 }
 extension ODPDocument: PresentationSlideSource {
     var slideDescriptors: [SlideDescriptor] { descriptors }
     func asset(at path: String) throws -> Data { try archive.read(path) }
+}
+
+
+extension ODPCodec: FileSlideReadingCodec {
+    package func openSlides(contentsOf url: URL, options: ReadOptions, cacheBytes: Int) throws -> any PresentationSlideSource {
+        try ODPDocument(Data(), options: options, archive: PackageArchive(contentsOf: url, limits: options.limits, cacheBytes: cacheBytes))
+    }
 }

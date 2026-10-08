@@ -2,6 +2,8 @@ import Foundation
 import SlideCore
 
 package enum ODF {
+    static let anim = "urn:oasis:names:tc:opendocument:xmlns:animation:1.0"
+    static let smil = "urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0"
     static let office = "urn:oasis:names:tc:opendocument:xmlns:office:1.0"
     static let draw = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
     static let style = "urn:oasis:names:tc:opendocument:xmlns:style:1.0"
@@ -44,6 +46,13 @@ public struct ODPResolvedStyle: Sendable, Equatable, Codable {
 }
 /// content/stylesのautomatic scope、family、named parentを分離した不変索引。
 public struct ODPStyleIndex: Sendable {
+    public init(data: Data, limits: PackageLimits = .init()) throws {
+        self = try ODPDocument(data, options: .init(limits: limits)).styles
+    }
+    public init(contentsOf url: URL, limits: PackageLimits = .init()) throws {
+        try self.init(data: PackageInput.read(url, limits: limits), limits: limits)
+    }
+
     private struct Record: Sendable {
         let name: String
         let family: String

@@ -30,7 +30,7 @@ func unitSpacingFieldsAndSourceStyles(_ name: String) throws {
         #expect(master.textStyles[style]?.levels[0]?.paragraph.effectiveLineSpacing == .points(22))
         #expect(master.textStyles[style]?.levels[0]?.paragraph.effectiveSpaceAfter == .percentage(1))
     }
-    #expect(try p.data() == fixture(name))
+    #expect(try p.write().data == fixture(name))
 }
 
 @Test func spacingOverlayAndFieldEvaluationAreExplicit() throws {
@@ -61,16 +61,16 @@ func unitSpacingFieldsAndSourceStyles(_ name: String) throws {
     var s = Slide(); s.addText("field",frame:.init(x:0,y:0,width:100,height:30))
     s.elements[0].text?.paragraphs[0] = .init(runs:[.init("7",field:.init(id:"{11111111-1111-1111-1111-111111111111}",type:"slidenum",cachedText:"7",paragraphStyle:.init(paragraph:.init(lineSpacingValue:.points(20)),text:.init(bold:false))))],style:.init(lineSpacing:9,lineSpacingValue:.points(0),spaceBeforeValue:.percentage(0.5),spaceAfterValue:.points(0)))
     var p = Presentation(slides:[s]); p.firstSlideNumber = 7
-    let read = try Presentation(data:p.data())
+    let read = try Presentation(data:p.write().data)
     #expect(read.firstSlideNumber == 7)
     #expect(read.slides[0].elements[0].text?.paragraphs[0].style.effectiveLineSpacing == .points(0))
     #expect(read.slides[0].elements[0].text?.paragraphs[0].runs[0].field?.paragraphStyle?.paragraph.effectiveLineSpacing == .points(20))
     p.slides[0].elements[0].text?.paragraphs[0].runs[0].text = "8"
-    #expect(throws:SlideError.self) { try p.data() }
+    #expect(throws:SlideError.self) { try p.write().data }
     var existing = try projection(projectionFixtures[0]); existing.firstSlideNumber = 9
-    #expect(try Presentation(data:existing.data()).firstSlideNumber == 9)
+    #expect(try Presentation(data:existing.write().data).firstSlideNumber == 9)
     let plan = try existing.planWrite(); existing.firstSlideNumber = 10
-    #expect(throws:SlideError.stalePlan) { try existing.encoded(using:plan) }
+    #expect(throws:SlideError.stalePlan) { try existing.write(using:plan) }
 }
 
 @Test(arguments: projectionFixtures)
@@ -81,14 +81,14 @@ func colorGeometryAndOuterShadowProjection(_ name: String) throws {
     #expect(abs(try #require(resolved.color).alpha - 0.35) < 0.000001)
     #expect(resolved.diagnostics.isEmpty)
     #expect(ColorResolver.resolve(e.stroke!.color).color?.alpha == 0)
-    #expect(e.rotation == 90 && e.flipHorizontal)
+    #expect(e.rotation == 90 && e.isFlippedHorizontally)
     let geometry = try #require(e.customGeometry), path = try #require(geometry.paths.first)
     #expect(e.geometry == nil && path.width == 100 && path.height == 50)
     #expect(path.fillMode == "none" && path.stroke == false && path.commands.count == 5)
     #expect(path.commands[2] == .quadratic(control:.init(x:"50",y:"25"),end:.init(x:"100",y:"50")))
     guard case .outerShadow(let shadow) = e.effects?.direct?.first else { Issue.record("missing shadow"); return }
     #expect(shadow.distance == 2 && shadow.direction == 90 && shadow.blurRadius == 1)
-    #expect(shadow.scaleX == 1 && shadow.scaleY == 0.5 && shadow.rotateWithShape == false)
+    #expect(shadow.scaleX == 1 && shadow.scaleY == 0.5 && shadow.rotatesWithShape == false)
     #expect(e.effects?.reference?.index == 1)
     #expect(ColorResolver.resolve(try #require(shadow.color)).color?.alpha == 0.5)
     #expect(!p.sourceThemes[0].effectStyles!.isEmpty)
@@ -111,9 +111,9 @@ func colorGeometryAndOuterShadowProjection(_ name: String) throws {
 @Test(arguments: projectionFixtures)
 func inheritedPartsTablesChartsAndSavedDiagram(_ name: String) throws {
     let p = try projection(name), s = p.slides[0]
-    #expect(s.showMasterShapes == false && s.colorMapOverride?["accent1"] == "accent2")
+    #expect(s.showsMasterShapes == false && s.colorMapOverride?["accent1"] == "accent2")
     let result = try p.readLayout(at: #require(s.layoutPath)), layout = result.layout
-    #expect(layout.showMasterShapes == false && layout.usesMasterColorMapping == true)
+    #expect(layout.showsMasterShapes == false && layout.usesMasterColorMapping == true)
     #expect(layout.elements[1].table?.rows[1][2].text.plainText == "作業時間")
     #expect(layout.elements[1].table?.columnWidths.count == 3)
     let image = try #require(layout.elements[2].image)
@@ -142,19 +142,19 @@ func projectionPreservesSourceAndRefusesUnsupportedEdits(_ name: String) throws 
     let bytes = try fixture(name); var p = try Presentation(data:bytes)
     let original = try parts(bytes)
     p.slides[0].elements[0].frame?.x += 1
-    let output = try p.data(), saved = try parts(output)
+    let output = try p.write().data, saved = try parts(output)
     #expect(saved["ppt/charts/readingChart.xml"] == original["ppt/charts/readingChart.xml"])
     #expect(saved["ppt/diagrams/drawing.xml"] == original["ppt/diagrams/drawing.xml"])
     let reopened = try Presentation(data:output)
     #expect(reopened.slides[0].elements[0].customGeometry == p.slides[0].elements[0].customGeometry)
     p.slides[0].elements[0].customGeometry?.paths[0].width = 200
-    #expect(throws:SlideError.self) { try p.data() }
+    #expect(throws:SlideError.self) { try p.write().data }
     p = try Presentation(data:bytes); p.slides[0].elements[0].effects?.reference?.index = 2
-    #expect(throws:SlideError.self) { try p.data() }
+    #expect(throws:SlideError.self) { try p.write().data }
     p = try Presentation(data:bytes); p.slides[0].elements[1].chart?.groups[0].series[0].values?.points[0].text = "100"
-    #expect(throws:SlideError.self) { try p.data() }
+    #expect(throws:SlideError.self) { try p.write().data }
     p = try Presentation(data:bytes); p.slides[0].elements[0].fill = .solid(.value(.init(base:.sRGB("FFFFFF"),transforms:[.init(name:"alpha",value:"0")])) )
-    #expect(throws:SlideError.self) { try p.data() }
+    #expect(throws:SlideError.self) { try p.write().data }
 }
 
 @Test func missingCachesReferencesAndMalformedPartsAreVisible() throws {
@@ -170,7 +170,7 @@ func projectionPreservesSourceAndRefusesUnsupportedEdits(_ name: String) throws 
     let p = try Presentation(data:noDrawing)
     #expect(p.slides[0].elements[2].diagram?.dataTexts == ["Data text"])
     #expect(p.readDiagnostics.contains { $0.feature == "OBJ-001" && $0.message.contains("ありません") })
-    #expect(try p.data() == noDrawing)
+    #expect(try p.write().data == noDrawing)
     let missing = try changedFixture("reading-models.pptx") { $0.removeValue(forKey:"ppt/charts/readingChart.xml") }
     #expect(throws:SlideError.self) { try Presentation(data:missing) }
     let brokenLayout = try changedFixture("reading-models.pptx") { $0["ppt/slideLayouts/slideLayout1.xml"] = Data("broken".utf8) }
@@ -190,7 +190,7 @@ func projectionPreservesSourceAndRefusesUnsupportedEdits(_ name: String) throws 
     #expect(try legacy(TextRun("old"),removing:["field"]).field == nil)
     #expect(try legacy(TextBody("old"),removing:["listStyle"]).listStyle == nil)
     #expect(try legacy(Element(),removing:["customGeometry","effects","chart","diagram"]).customGeometry == nil)
-    #expect(try legacy(Slide(),removing:["showMasterShapes","colorMapOverride","usesMasterColorMapping","backgroundReference","themeOverridePath"]).showMasterShapes == nil)
+    #expect(try legacy(Slide(),removing:["showsMasterShapes","colorMapOverride","usesMasterColorMapping","backgroundReference","themeOverridePath"]).showsMasterShapes == nil)
 }
 
 @Test(arguments: projectionFixtures)
@@ -200,7 +200,7 @@ func fieldAndSpacingEditsKeepRunsAndStrictNamespace(_ name: String) throws {
     p.slides[0].elements[0].text?.paragraphs[0].style.lineSpacingValue = .percentage(1.1)
     p.slides[0].elements[0].text?.paragraphs[0].runs[1].text = "8"
     p.slides[0].elements[0].text?.paragraphs[0].runs[1].field?.cachedText = "8"
-    let output = try p.data(), reopened = try Presentation(data:output)
+    let output = try p.write().data, reopened = try Presentation(data:output)
     let body = try #require(reopened.slides[0].elements[0].text)
     #expect(body.listStyle == list && body.paragraphs[0].runs.count == 3)
     #expect(body.paragraphs[0].runs[1].field?.cachedText == "8")
@@ -215,12 +215,12 @@ func fieldAndSpacingEditsKeepRunsAndStrictNamespace(_ name: String) throws {
 @Test func clonedFieldsRenewModelIdentityAndChartReferences() throws {
     var s = Slide(); s.addText("7",frame:.init(x:0,y:0,width:100,height:40))
     s.elements[0].text?.paragraphs[0].runs[0].field = .init(id:"{11111111-1111-1111-1111-111111111111}",type:"slidenum",cachedText:"7")
-    var p = try Presentation(data:Presentation(slides:[s]).data())
+    var p = try Presentation(data:Presentation(slides:[s]).write().data)
     let oldID = p.slides[0].elements[0].text?.paragraphs[0].runs[0].field?.id
     let id = try p.duplicateSlide(id:p.slides[0].id)
     let newID = try #require(p.slides.last?.elements[0].text?.paragraphs[0].runs[0].field?.id)
     #expect(oldID != newID)
-    let reopened = try Presentation(data:p.data())
+    let reopened = try Presentation(data:p.write().data)
     #expect(reopened.slides.last?.elements[0].text?.paragraphs[0].runs[0].field?.id == newID)
     #expect(try p.slideNumber(for:id) == 2)
     var chartDocument = try Presentation(data:fixture())
@@ -244,7 +244,7 @@ func fieldAndSpacingEditsKeepRunsAndStrictNamespace(_ name: String) throws {
     #expect(p.readDiagnostics.contains { $0.feature == "TXT-020" })
     #expect(p.readDiagnostics.contains { $0.feature == "GEO-004" })
     #expect(p.slides[0].elements[0].customGeometry?.guides.first?.formula == "val 20")
-    #expect(try p.data() == changed)
+    #expect(try p.write().data == changed)
     let noCache = try changedFixture("reading-models.pptx") { parts in
         let xml = String(decoding:parts["ppt/charts/readingChart.xml"]!,as:UTF8.self)
         let start = xml.range(of:"<c:strCache>")!.lowerBound, end = xml.range(of:"</c:strCache>")!.upperBound
@@ -298,5 +298,5 @@ func fieldAndSpacingEditsKeepRunsAndStrictNamespace(_ name: String) throws {
     #expect(ColorResolver.resolve(cellColor).color?.alpha == 0.5)
     #expect(ColorResolver.resolve(background).color?.alpha == 0.5)
     #expect(layout.diagnostics.allSatisfy { $0.location.slideID == nil })
-    #expect(try p.data() == bytes)
+    #expect(try p.write().data == bytes)
 }

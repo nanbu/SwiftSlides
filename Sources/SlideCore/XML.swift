@@ -18,6 +18,7 @@ package enum NS {
 package func escapeXML(_ s: String) -> String { s.replacingOccurrences(of: "&", with: "&amp;").replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: "\"", with: "&quot;").replacingOccurrences(of: ">", with: "&gt;").replacingOccurrences(of: "\r", with: "&#13;") }
 /// 操作内部だけで使う可変ツリー。原本のQNameと名前空間スコープを保持する。
 package final class MarkupNode {
+    package var sourceElementIndex: Int?
     package enum Content { case text(String), node(MarkupNode) }
     package let name: String
     package let namespace: String
@@ -62,14 +63,14 @@ package final class MarkupNode {
         let body = content.map { switch $0 { case .text(let t): escapeXML(t); case .node(let n): n.serialized(parentNamespaces: namespaces) } }.joined()
         return "<\(qualifiedName)\(declarations)\(attrs)>\(body)</\(qualifiedName)>"
     }
-    package static func parse(_ data: Data, part: String, limits: PackageLimits) throws -> MarkupNode {
+    package static func parse(_ data: Data, part: String, limits: PackageLimits, pruning: Set<String> = []) throws -> MarkupNode {
         try Task.checkCancellation()
         guard limits.maxXMLDepth > 0, limits.maxXMLNodes > 0 else { throw SlideError.limitExceeded("XML limits") }
         // XML accepts UTF-8/16/32. Reject declarations before handing bytes to the platform parser.
         for encoding in [String.Encoding.utf8, .utf16LittleEndian, .utf16BigEndian, .utf32LittleEndian, .utf32BigEndian] {
             for keyword in ["<!DOCTYPE", "<!ENTITY"] { if let pattern = keyword.data(using: encoding), data.range(of: pattern) != nil { throw SlideError.invalidXML(part: part, detail: "DTD / ENTITYは禁止です") } }
         }
-        let d = XMLDelegate(part: part, limits: limits), parser = XMLParser(data: data)
+        let d = XMLDelegate(part: part, limits: limits, pruning: pruning), parser = XMLParser(data: data)
         parser.shouldProcessNamespaces = true; parser.shouldReportNamespacePrefixes = true; parser.shouldResolveExternalEntities = false; parser.delegate = d
         let ok = parser.parse()
         try Task.checkCancellation()
@@ -86,7 +87,9 @@ private final class XMLDelegate: NSObject, XMLParserDelegate {
     var failure: (any Error)?
     var nodes = 0
     var completed = false
-    init(part: String, limits: PackageLimits) { self.part = part; self.limits = limits }
+    let pruning: Set<String>
+    var pruningRoot = false, discardedDepth = 0
+    init(part: String, limits: PackageLimits, pruning: Set<String>) { self.part = part; self.limits = limits; self.pruning = pruning }
     private func keepParsing(_ parser: XMLParser) -> Bool {
         if Task.isCancelled { failure = CancellationError() }
         guard failure == nil else { parser.abortParsing(); return false }
@@ -99,7 +102,7 @@ private final class XMLDelegate: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName qName: String?, attributes dict: [String: String]) {
         guard keepParsing(parser) else { return }
         nodes += 1
-        guard nodes <= limits.maxXMLNodes, stack.count < limits.maxXMLDepth else { failure = SlideError.limitExceeded("XML深さ/要素数: \(part)"); parser.abortParsing(); return }
+        guard nodes <= limits.maxXMLNodes, stack.count + discardedDepth < limits.maxXMLDepth else { failure = SlideError.limitExceeded("XML深さ/要素数: \(part)"); parser.abortParsing(); return }
         var attrs: [String: String] = [:], names: [String: String] = [:]
         for (k,v) in dict {
             let pieces = k.split(separator: ":", maxSplits: 1).map(String.init)
@@ -107,14 +110,19 @@ private final class XMLDelegate: NSObject, XMLParserDelegate {
             if pieces.count == 2 { guard let uri = prefixes[pieces[0]]?.last else { failure = SlideError.invalidXML(part: part, detail: "未宣言の接頭辞"); parser.abortParsing(); return }; key = "\(uri)|\(pieces[1])" } else { key = k }
             attrs[key] = v; names[key] = k
         }
+        if pruningRoot { discardedDepth += 1; return }
         let node = MarkupNode(name: name, namespace: namespaceURI ?? "", qualifiedName: qName ?? name, attributes: attrs, attributeNames: names, namespaces: prefixes.compactMapValues(\.last))
+        node.sourceElementIndex = nodes
         if let parent = stack.last { parent.content.append(.node(node)) } else { guard root == nil else { failure = SlideError.invalidXML(part: part, detail: "複数ルート"); parser.abortParsing(); return }; root = node }
         stack.append(node)
+        pruningRoot = pruning.contains("\(namespaceURI ?? "")|\(name)")
     }
-    func parser(_ parser: XMLParser, foundCharacters s: String) { guard keepParsing(parser) else { return }; stack.last?.content.append(.text(s)) }
+    func parser(_ parser: XMLParser, foundCharacters s: String) { guard keepParsing(parser), !pruningRoot else { return }; stack.last?.content.append(.text(s)) }
     func parser(_ parser: XMLParser, foundCDATA data: Data) { self.parser(parser, foundCharacters: String(decoding: data, as: UTF8.self)) }
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName qName: String?) {
         guard keepParsing(parser) else { return }
+        if discardedDepth > 0 { discardedDepth -= 1; return }
+        pruningRoot = false
         guard failure == nil, let node = stack.popLast(), node.name == name, node.namespace == (namespaceURI ?? "") else { if failure == nil { failure = SlideError.invalidXML(part: part, detail: "不正なXML境界") }; parser.abortParsing(); return }
     }
     func parser(_ parser: XMLParser, foundProcessingInstructionWithTarget target: String, data: String?) { failure = SlideError.invalidXML(part: part, detail: "processing instructionは未対応です"); parser.abortParsing() }

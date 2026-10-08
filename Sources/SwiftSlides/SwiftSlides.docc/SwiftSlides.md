@@ -6,7 +6,7 @@
 
 開発中・API互換性は未保証。PPTX/PPTMの読み取りと保存、図形・線・フォント・文字書式・表・レイアウトを提供します。
 Swift 6.4のasync/await・`@concurrent`・構造化TaskGroupによる非同期I/O、一括読取、協調キャンセルを提供します。
-ODPは読取専用codecと限定書式索引を提供し、Keynoteはwire試作のみで公開codecは未提供。描画、継承した実効外観、文字計測は提供しません。
+ODPとKeynoteは読取専用codecを提供します。PPTXの限定継承解決はresolveElement、復号は別製品SlideDecryptで扱います。描画・文字計測・全機能の意味解釈は提供しません。
 詳しい境界は[対応表](https://github.com/nanbu/SwiftSlides#対応範囲)を参照してください。
 
 ```swift
@@ -122,7 +122,7 @@ print(result.warnings)
 - ``SlideImportingCodec``
 - ``Codec``
 - ``CodecSet``
-- ``PPTXCodec``
+- ``Codec``
 - ``CodecCapabilities``
 - ``CapabilityOperation``
 - ``CapabilityStatus``

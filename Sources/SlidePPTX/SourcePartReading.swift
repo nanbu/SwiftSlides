@@ -29,7 +29,7 @@ extension PPTXReader {
             themeOverridePath:rels.values.first { $0.type == "themeOverride" }?.path,
             elements:try elements(sp,rels:rels,part:path,slideID:nil,ids:&ids),background:try fill(c.child("bg")?.child("bgPr"),part:path),
             backgroundReference:styleReference(c.child("bg")?.child("bgRef"),part:path),colorMapOverride:root.child("clrMapOvr")?.child("overrideClrMapping")?.attributes,
-            usesMasterColorMapping:root.child("clrMapOvr").map { $0.child("masterClrMapping") != nil },showMasterShapes:boolean(root.attr("showMasterSp")),layoutType:root.attr("type"))
+            usesMasterColorMapping:root.child("clrMapOvr").map { $0.child("masterClrMapping") != nil },showsMasterShapes:boolean(root.attr("showMasterSp")),layoutType:root.attr("type"))
     }
     func master(at path: String) throws -> SlideMasterPart {
         let root = try tree(path)
@@ -48,7 +48,7 @@ extension PPTXReader {
 }
 
 extension Presentation {
-    private func sourcePartReader() throws -> PPTXReader {
+    func sourcePartReader() throws -> PPTXReader {
         try Task.checkCancellation()
         guard sourceFormat == nil || sourceFormat == .pptx || sourceFormat == .pptm else { throw SlideError.unsafeEdit("この形式のmaster/layout読取は未対応です") }
         if let storage {

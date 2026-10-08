@@ -18,7 +18,7 @@ import SwiftSlides
     let pptm = try CodecSet.all.capabilities(for: .pptm)
     #expect(pptm.capability(for: "TXT-003", operation: .read, profile: .ooxmlTransitional).status == .unverified)
     #expect(pptm.capability(for: "SEC-005", operation: .edit, profile: .ooxmlTransitional).status == .preserveOnly)
-    #expect(throws: SlideError.noCodec(.keynote)) { try CodecSet.all.capabilities(for: .keynote) }
+    #expect(try CodecSet.all.capabilities(for: .keynote)[.read] == .partial)
     let result = try JSONDecoder().decode(CodecCapabilities.self, from: JSONEncoder().encode(pptx))
     #expect(result == pptx)
 }
@@ -83,7 +83,7 @@ import SwiftSlides
     #expect(opaque.location.sourceElement == "graphicFrame")
     var presentation = read.presentation
     presentation.slides[0].elements[0].text = .init("更新本文")
-    let write = try presentation.encoded()
+    let write = try presentation.write()
     let text = try #require(write.diagnostics.first { $0.feature == "TXT-002" })
     #expect(text.stage == .write)
     #expect(text.action == .rewritten)
@@ -91,9 +91,9 @@ import SwiftSlides
     #expect(text.location.elementID == presentation.slides[0].elements[0].id)
     #expect(text.location.sourceElement == "txBody")
     #expect(write.diagnostics.map(\.count) == write.warnings.map(\.count))
-    #expect(throws: SlideError.self) { try presentation.encoded(options: .init(strict: true)) }
-    #expect(try read.presentation.encoded().diagnostics.isEmpty)
-    #expect(try read.presentation.data() == source)
+    #expect(throws: SlideError.self) { try presentation.write(options: .init(strict: true)) }
+    #expect(try read.presentation.write().diagnostics.isEmpty)
+    #expect(try read.presentation.write().data == source)
 }
 
 @Test func diagnosticFeatureDoesNotGuessForeignNamespaceOrMessages() throws {
@@ -120,7 +120,7 @@ import SwiftSlides
     #expect(signature.action == .unverified)
     let macro = try #require(Presentation.read(fixture("macro.pptm")).diagnostics.first { $0.feature == "SEC-005" })
     #expect(macro.action == .preserved)
-    let omitted = try Presentation.read(fixture(), options: .init(includeNotes: false))
+    let omitted = try Presentation.read(fixture(), options: .init(includesNotes: false))
     let note = try #require(omitted.diagnostics.first { $0.code.rawValue == "notesOmitted" })
     #expect(note.action == .omitted)
     #expect(note.location.slideID == omitted.presentation.slides[0].id)

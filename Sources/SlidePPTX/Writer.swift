@@ -165,7 +165,9 @@ final class PPTXWriter {
         if e.placeholder != nil { throw SlideError.unsafeEdit("新規プレースホルダーの作成は未対応です") }
         if let g = e.geometry, !PPTXXML.validPresets.contains(g.preset) { throw SlideError.invalidModel("未知の図形プリセット: \(g.preset)") }
         guard e.customGeometry == nil, e.effects == nil, e.chart == nil, e.diagram == nil, e.media == nil, e.nativeFeatures == nil else { throw SlideError.unsafeEdit("読取専用のgeometry・効果・chart・diagramを新規保存できません") }
-        guard e.image?.crop == nil else { throw SlideError.unsafeEdit("画像cropの新規保存は未対応です") }
+        guard e.model3D == nil, e.spatialGeometry == nil, e.scene3D == nil, e.shape3D == nil else { throw SlideError.unsafeEdit("3D投影の新規保存は未対応です") }
+        guard e.transform2D == nil, e.textPath == nil, e.geometryEngine == nil, e.enhancedGeometry == nil, e.equation == nil else { throw SlideError.unsafeEdit("ODP高度図形・数式の新規保存は未対応です") }
+        guard e.image?.crop == nil, e.nativeGeometry == nil, e.nativeObjectID == nil, e.sourceProperties == nil else { throw SlideError.unsafeEdit("画像crop・native object・原本投影の新規保存は未対応です") }
         let cnv = "<p:cNvPr id=\"\(id)\" name=\"\(escapeXML(e.name.isEmpty ? "Shape \(id)" : e.name))\"\(e.image.map { " descr=\"\(escapeXML($0.alternativeText))\"" } ?? "")/>"
         let text: String = try e.text.map { try PPTXXML.text($0,relationship:{ try self.linkID($0,rels:rels,strict:strict) }) } ?? ""
         let geometry = e.geometry.map { "<a:prstGeom prst=\"\(escapeXML($0.preset))\"><a:avLst/></a:prstGeom>" } ?? "<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>"
@@ -194,8 +196,8 @@ final class PPTXWriter {
     }
     func nextID(_ ids: inout Set<String>) -> String { var n = 2; while ids.contains(String(n)) { n += 1 }; let id = String(n); ids.insert(id); return id }
     func slideXML(_ slide: Slide, path: String, layout: String) throws {
-        guard slide.transition == nil, slide.timing == nil, slide.comments == nil, slide.nativeFeatures == nil else { throw SlideError.unsafeEdit("遷移・時間構造・コメント・追加内容の新規保存は未対応です") }
-        guard slide.showMasterShapes == nil, slide.colorMapOverride == nil, slide.usesMasterColorMapping == nil, slide.backgroundReference == nil, slide.themeOverridePath == nil else { throw SlideError.unsafeEdit("継承投影を持つスライドの新規保存は未対応です") }
+        guard slide.sizeOverride == nil, slide.transition == nil, slide.timing == nil, slide.comments == nil, slide.commentThreads == nil, slide.media == nil, slide.nativeFeatures == nil else { throw SlideError.unsafeEdit("遷移・時間構造・コメント・追加内容の新規保存は未対応です") }
+        guard slide.showsMasterShapes == nil, slide.colorMapOverride == nil, slide.usesMasterColorMapping == nil, slide.backgroundReference == nil, slide.themeOverridePath == nil else { throw SlideError.unsafeEdit("継承投影を持つスライドの新規保存は未対応です") }
         let rels = try relationships(path)
         try addRelationship(rels,type:"slideLayout",target:"/"+layout)
         var ids: Set<String> = ["1"], elements = ""
@@ -372,8 +374,8 @@ final class PPTXWriter {
         let root = try parse(path), strict = root.namespace == NS.strictP, rels = try relationships(path)
         guard let c = root.child("cSld"), let sp = c.child("spTree") else { throw SlideError.corruptedPackage("スライド構造が不正です") }
         c.set("name",slide.name.isEmpty ? nil : slide.name); root.set("show",slide.isHidden ? "0" : nil)
-        guard slide.showMasterShapes == original.showMasterShapes, slide.colorMapOverride == original.colorMapOverride, slide.usesMasterColorMapping == original.usesMasterColorMapping, slide.backgroundReference == original.backgroundReference, slide.themeOverridePath == original.themeOverridePath else { throw SlideError.unsafeEdit("読取専用の継承書式を変更できません") }
-        guard slide.transition == original.transition, slide.timing == original.timing, slide.comments == original.comments, slide.nativeFeatures == original.nativeFeatures else { throw SlideError.unsafeEdit("読取専用の遷移・時間構造・コメント・追加内容を変更できません") }
+        guard slide.showsMasterShapes == original.showsMasterShapes, slide.colorMapOverride == original.colorMapOverride, slide.usesMasterColorMapping == original.usesMasterColorMapping, slide.backgroundReference == original.backgroundReference, slide.themeOverridePath == original.themeOverridePath else { throw SlideError.unsafeEdit("読取専用の継承書式を変更できません") }
+        guard slide.sizeOverride == original.sizeOverride, slide.transition == original.transition, slide.timing == original.timing, slide.comments == original.comments, slide.commentThreads == original.commentThreads, slide.media == original.media, slide.nativeFeatures == original.nativeFeatures else { throw SlideError.unsafeEdit("読取専用の遷移・時間構造・コメント・追加内容を変更できません") }
         if slide.layoutPath != original.layoutPath { throw SlideError.unsafeEdit("既存スライドのレイアウト変更は未対応です") }
         if slide.background != original.background {
             guard !isReadOnlyFill(slide.background), !isReadOnlyFill(original.background) else { throw SlideError.unsafeEdit("追加の背景塗りを変更できません") }
@@ -395,6 +397,7 @@ final class PPTXWriter {
                 let notesRoot = try parse(notePath), notesRels = try relationships(notePath)
                 let bodyShapes = notesRoot.child("cSld")?.child("spTree")?.named("sp").filter { let type = $0.child("nvSpPr")?.child("nvPr")?.child("ph")?.attr("type"); return type == nil || type == "body" } ?? []
                 guard bodyShapes.count == 1, let shape = bodyShapes.first else { throw SlideError.unsafeEdit("複数のノート領域は編集できません") }
+                guard !containsEquationSource(shape.child("txBody")) else { throw SlideError.unsafeEdit("数式を含むノートの再構成は未対応です") }
                 let xml = try PPTXXML.text(slide.notes ?? TextBody(),relationship:{ try self.linkID($0,rels:notesRels,strict:strict) })
                 shape.replace("txBody",with:try MarkupNode.fragment(xml,strict:strict)); put(notePath,notesRoot.xml); saveRelationships(notePath,notesRels)
                 warning(notePath,"txBody","ノート文字領域を再構成しました",slideID:slide.id)
@@ -421,13 +424,16 @@ final class PPTXWriter {
     func patchElement(_ e: Element, original o: Element, node: MarkupNode, path: String, rels: MarkupNode, strict: Bool, ids: inout Set<String>) throws {
         guard e.kind == o.kind, e.rawXML == o.rawXML, e.placeholder == o.placeholder, e.isTextBox == o.isTextBox else { throw SlideError.unsafeEdit("図形種類・未解釈XML・プレースホルダーの変更は未対応です") }
         guard e.customGeometry == o.customGeometry, e.effects == o.effects, e.chart == o.chart, e.diagram == o.diagram, e.media == o.media, e.nativeFeatures == o.nativeFeatures, e.image?.crop == o.image?.crop else { throw SlideError.unsafeEdit("読取専用の投影を変更できません") }
+        guard e.nativeGeometry == o.nativeGeometry, e.nativeObjectID == o.nativeObjectID, e.sourceProperties == o.sourceProperties else { throw SlideError.unsafeEdit("native object・原本投影を変更できません") }
+        guard e.model3D == o.model3D, e.spatialGeometry == o.spatialGeometry, e.scene3D == o.scene3D, e.shape3D == o.shape3D else { throw SlideError.unsafeEdit("読取専用の3D投影を変更できません") }
+        guard e.transform2D == o.transform2D, e.textPath == o.textPath, e.geometryEngine == o.geometryEngine, e.enhancedGeometry == o.enhancedGeometry, e.equation == o.equation else { throw SlideError.unsafeEdit("読取専用のODP高度図形・数式を変更できません") }
         if e.kind == .opaque { throw SlideError.unsafeEdit("未解釈要素は編集できません") }
         let nv = node.children.first { $0.name.hasPrefix("nv") && $0.isP }
         if e.name != o.name { nv?.child("cNvPr")?.set("name",e.name) }
         let propsName = e.kind == .group ? "grpSpPr" : "spPr"
         var props = node.child(propsName)
         if props == nil && e.kind != .table { props = try MarkupNode.fragment("<p:\(propsName)/>",strict:strict); node.replace(propsName,with:props) }
-        if e.frame != o.frame || e.rotation != o.rotation || e.flipHorizontal != o.flipHorizontal || e.flipVertical != o.flipVertical || e.childFrame != o.childFrame {
+        if e.frame != o.frame || e.rotation != o.rotation || e.isFlippedHorizontally != o.isFlippedHorizontally || e.isFlippedVertically != o.isFlippedVertically || e.childFrame != o.childFrame {
             let target = e.kind == .table ? node : props!
             if e.frame == nil { target.replace("xfrm",with:nil) }
             else { target.replace("xfrm",with:try MarkupNode.fragment(PPTXXML.transform(e,p:e.kind == .table),strict:strict),first:true) }
@@ -453,11 +459,12 @@ final class PPTXWriter {
             }.map(\.element)
         }
         if e.text != o.text {
+            guard !containsEquationSource(node.child("txBody")) else { throw SlideError.unsafeEdit("数式を含む文字領域の再構成は未対応です") }
             guard e.text?.listStyle == o.text?.listStyle else { throw SlideError.unsafeEdit("リスト既定書式の編集は未対応です") }
             let generated = try e.text.map { value in var value = value; value.listStyle = nil; return try MarkupNode.fragment(PPTXXML.text(value,relationship:{ try self.linkID($0,rels:rels,strict:strict) }),strict:strict) }
             if let existing = node.child("txBody"), let generated, let before = o.text, let after = e.text {
                 // Preserve bodyPr and lstStyle exactly when only the paragraphs changed.
-                if before.insets == after.insets, before.verticalAlignment == after.verticalAlignment, before.wrap == after.wrap {
+                if before.insets == after.insets, before.verticalAlignment == after.verticalAlignment, before.wrapsText == after.wrapsText {
                     existing.remove(["p"]); existing.content += generated.named("p").map(MarkupNode.Content.node)
                 } else { if let list = existing.child("lstStyle") { generated.replace("lstStyle",with:list) }; node.replace("txBody",with:generated) }
             } else { node.replace("txBody",with:generated) }
@@ -471,6 +478,7 @@ final class PPTXWriter {
             guard let t = e.table, let target = node.child("graphic")?.child("graphicData") else { throw SlideError.unsafeEdit("表構造がありません") }
             guard t.rows.allSatisfy({$0.allSatisfy { $0.rowSpan == 1 && $0.columnSpan == 1 && !$0.isMergeContinuation }}) else { throw SlideError.unsafeEdit("結合表の編集保存は未対応です") }
             if let before = o.table, let tableNode = target.child("tbl"), try patchTable(t, original: before, node: tableNode, path: path, rels: rels, strict: strict) { return }
+            guard !containsEquationSource(target.child("tbl")) else { throw SlideError.unsafeEdit("数式を含む表の再構成は未対応です") }
             target.replace("tbl",with:try MarkupNode.fragment(PPTXXML.table(t,relationship:{ try self.linkID($0,rels:rels,strict:strict) }),strict:strict)); warning(path,"tbl","表を再構成しました。未対応のセル書式は引き継ぎません",feature:"TBL-001",elementID:e.id)
         }
         if e.children != o.children { guard e.kind == .group else { throw SlideError.invalidModel("グループ以外にchildrenを指定できません") }; try patchElements(e.children,original:o.children,parent:node,path:path,rels:rels,strict:strict,ids:&ids) }
@@ -489,8 +497,9 @@ final class PPTXWriter {
             guard cells.count == table.rows[i].count else { throw SlideError.unsafeEdit("表セルと原本の対応が不明です") }
             for j in table.rows[i].indices {
                 let cell = table.rows[i][j], before = original.rows[i][j], source = cells[j]
-                guard cell.borders == before.borders, cell.value == before.value, cell.formula == before.formula else { throw SlideError.unsafeEdit("個別罫線・型付きセル値・式の投影を変更できません") }
+                guard cell.nativeProperties == before.nativeProperties, cell.borders == before.borders, cell.value == before.value, cell.formula == before.formula, cell.nativeFormula == before.nativeFormula else { throw SlideError.unsafeEdit("個別罫線・型付きセル値・式の投影を変更できません") }
                 if cell.text != before.text {
+                    guard !containsEquationSource(source.child("txBody")) else { throw SlideError.unsafeEdit("数式を含むセルの再構成は未対応です") }
                     source.replace("txBody",with:try MarkupNode.fragment(PPTXXML.text(cell.text,p:false,relationship:{ try self.linkID($0,rels:rels,strict:strict) }),strict:strict))
                     warning(path,"txBody","表セルの文字領域を再構成しました",feature:"TXT-002")
                 }

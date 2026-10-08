@@ -40,7 +40,7 @@ extension PPTXReader {
             if stops.isEmpty { warn(part,gradient,.uninterpretedFormatting,"gradientの直接stopが省略されています。継承で補いません") }
             let linear = drawingChild(gradient,"lin")
             return .gradient(try .init(stops: stops, angle: finite(linear?.attr("ang"), part: part, name: "ang").map { $0 / 60_000 },
-                scaled: boolean(linear?.attr("scaled")), path: drawingChild(gradient,"path")?.attr("path"), flip: gradient.attr("flip"), rotateWithShape: boolean(gradient.attr("rotWithShape")), rawXML: gradient.xml))
+                scaled: boolean(linear?.attr("scaled")), path: drawingChild(gradient,"path")?.attr("path"), flip: gradient.attr("flip"), rotatesWithShape: boolean(gradient.attr("rotWithShape")), rawXML: gradient.xml))
         }
         if let pattern = drawingChild(node,"pattFill") {
             return .pattern(.init(preset: pattern.attr("prst"), foreground: color(drawingChild(pattern,"fgClr"),part:part), background: color(drawingChild(pattern,"bgClr"),part:part), rawXML: pattern.xml))
@@ -52,7 +52,7 @@ extension PPTXReader {
                 reference = try partReference(id, rels: relationships(from: part), part: part, expected: "image")
                 if reference?.externalTarget != nil { warn(part, picture, .unsupportedContent, "外部画像塗りは取得しません") }
             } else { reference = nil; warn(part,picture,.uninterpretedFormatting,"画像塗りの直接参照が省略されています。継承で補いません") }
-            return .picture(try .init(part: part, image: reference, crop: imageCrop(drawingChild(picture,"srcRect"),part:part), isTiled: drawingChild(picture,"tile") != nil, rotateWithShape: boolean(picture.attr("rotWithShape")), rawXML: picture.xml))
+            return .picture(try .init(part: part, image: reference, crop: imageCrop(drawingChild(picture,"srcRect"),part:part), isTiled: drawingChild(picture,"tile") != nil, rotatesWithShape: boolean(picture.attr("rotWithShape")), rawXML: picture.xml))
         }
         return nil
     }
@@ -78,7 +78,7 @@ extension PPTXReader {
         }
         let effect = node.children.first { !($0.isP && ["sndAc", "extLst"].contains($0.name)) }
         warn(part,node,.unsupportedContent,"遷移の記述を読みます。固有効果の再生は行いません",feature:"ANI-001",slideID:slideID)
-        return try .init(effect: effect?.name, effectNamespace: effect?.namespace, speed: node.attr("spd"), advanceOnClick: boolean(node.attr("advClick")),
+        return try .init(effect: effect?.name, effectNamespace: effect?.namespace, speed: node.attr("spd"), advancesOnClick: boolean(node.attr("advClick")),
             advanceAfterMilliseconds: time(node.attr("advTm")), durationMilliseconds: time(node.attributes["http://schemas.microsoft.com/office/powerpoint/2010/main|dur"]), rawXML: node.xml)
     }
     func timing(_ node: MarkupNode?, part: String, slideID: String) throws -> SlideTiming? {
@@ -100,7 +100,7 @@ extension PPTXReader {
         func visit(_ node: MarkupNode) throws {
             try Task.checkCancellation()
             let kind: MediaReference.Kind?
-            if node.isA, ["audioFile", "wavAudioFile"].contains(node.name) { kind = .audio }
+            if node.isA, ["audioFile", "wavAudioFile", "snd"].contains(node.name) { kind = .audio }
             else if node.isA, ["videoFile", "quickTimeFile"].contains(node.name) { kind = .video }
             else if node.namespace == "http://schemas.microsoft.com/office/powerpoint/2010/main", node.name == "media" { kind = .media }
             else { kind = nil }
@@ -136,6 +136,7 @@ extension PPTXReader {
             let root = try tree(path)
             native.append(try nativeFeature(root,rels:relationships(from:path),part:path))
             guard root.isP, root.name == "cmLst" else {
+                if root.name == "cmLst", root.namespace == "http://schemas.microsoft.com/office/powerpoint/2018/8/main" { continue }
                 warn(path,root,.unsupportedContent,"このコメント形式の意味は未解釈です。XMLと参照を保持します",slideID:slideID); continue
             }
             var identities = Set<String>()

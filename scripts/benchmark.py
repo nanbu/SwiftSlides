@@ -20,10 +20,10 @@ case "create":
 case "read":
     let p = try Presentation(contentsOf:url); precondition(p.slides.count == 100 && p.slides[0].elements.count == 10); bytes = p.plainText.utf8.count
 case "noop":
-    let p = try Presentation(contentsOf:url), d = try p.data(); let original = try Data(contentsOf:url); precondition(d == original); bytes = d.count
+    let p = try Presentation(contentsOf:url), d = try p.write().data; let original = try Data(contentsOf:url); precondition(d == original); bytes = d.count
 case "edit":
     var p = try Presentation(contentsOf:url); p.slides[0].elements[0].frame?.x += 1
-    let d = try p.data(options:.init(strict:true)); bytes = d.count
+    let d = try p.write(options:.init(strict:true)).data; bytes = d.count
     let reread = try Presentation(data:d); precondition(reread.slides[0].elements[0].frame?.x == 21)
 default: fatalError("unknown operation")
 }

@@ -29,15 +29,25 @@ public struct GradientStop: Sendable, Equatable, Codable {
 }
 /// 線形/経路gradientの直接値。角度は度、stop位置は倍率。pathの詳細はXMLに保持する。
 public struct GradientFill: Sendable, Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case stops
+        case angle
+        case scaled
+        case path
+        case flip
+        case rotatesWithShape = "rotateWithShape"
+        case rawXML
+    }
+
     public var stops: [GradientStop]
     public var angle: Double?
     public var scaled: Bool?
     public var path: String?
     public var flip: String?
-    public var rotateWithShape: Bool?
+    public var rotatesWithShape: Bool?
     public var rawXML: String
-    public init(stops: [GradientStop], angle: Double? = nil, scaled: Bool? = nil, path: String? = nil, flip: String? = nil, rotateWithShape: Bool? = nil, rawXML: String = "") {
-        self.stops = stops; self.angle = angle; self.scaled = scaled; self.path = path; self.flip = flip; self.rotateWithShape = rotateWithShape; self.rawXML = rawXML
+    public init(stops: [GradientStop], angle: Double? = nil, scaled: Bool? = nil, path: String? = nil, flip: String? = nil, rotatesWithShape: Bool? = nil, rawXML: String = "") {
+        self.stops = stops; self.angle = angle; self.scaled = scaled; self.path = path; self.flip = flip; self.rotatesWithShape = rotatesWithShape; self.rawXML = rawXML
     }
 }
 public struct PatternFill: Sendable, Equatable, Codable {
@@ -51,15 +61,24 @@ public struct PatternFill: Sendable, Equatable, Codable {
 }
 /// 画像塗り。内部assetと外部URLを区別し、tile/stretchの詳細はXMLに保持する。
 public struct PictureFill: Sendable, Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case part
+        case image
+        case crop
+        case isTiled
+        case rotatesWithShape = "rotateWithShape"
+        case rawXML
+    }
+
     public var part: String
     /// 省略されたblip参照はnil。継承元を推測して埋めない。
     public var image: PartReference?
     public var crop: ImageCrop?
     public var isTiled: Bool
-    public var rotateWithShape: Bool?
+    public var rotatesWithShape: Bool?
     public var rawXML: String
-    public init(part: String, image: PartReference? = nil, crop: ImageCrop? = nil, isTiled: Bool = false, rotateWithShape: Bool? = nil, rawXML: String = "") {
-        self.part = part; self.image = image; self.crop = crop; self.isTiled = isTiled; self.rotateWithShape = rotateWithShape; self.rawXML = rawXML
+    public init(part: String, image: PartReference? = nil, crop: ImageCrop? = nil, isTiled: Bool = false, rotatesWithShape: Bool? = nil, rawXML: String = "") {
+        self.part = part; self.image = image; self.crop = crop; self.isTiled = isTiled; self.rotatesWithShape = rotatesWithShape; self.rawXML = rawXML
     }
 }
 
@@ -85,19 +104,30 @@ public struct TableCellValue: Sendable, Equatable, Codable {
 
 /// 効果の記述。未指定とfalse/0を区別する。再生や既定値の補完は行わない。
 public struct SlideTransition: Sendable, Equatable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case effect
+        case effectNamespace
+        case speed
+        case advancesOnClick = "advanceOnClick"
+        case advanceAfterMilliseconds
+        case durationMilliseconds
+        case rawXML
+    }
+
     public var effect: String?
     public var effectNamespace: String?
     public var speed: String?
-    public var advanceOnClick: Bool?
+    public var advancesOnClick: Bool?
     public var advanceAfterMilliseconds: UInt32?
     public var durationMilliseconds: UInt32?
     public var rawXML: String
-    public init(effect: String? = nil, effectNamespace: String? = nil, speed: String? = nil, advanceOnClick: Bool? = nil, advanceAfterMilliseconds: UInt32? = nil, durationMilliseconds: UInt32? = nil, rawXML: String = "") {
-        self.effect = effect; self.effectNamespace = effectNamespace; self.speed = speed; self.advanceOnClick = advanceOnClick; self.advanceAfterMilliseconds = advanceAfterMilliseconds; self.durationMilliseconds = durationMilliseconds; self.rawXML = rawXML
+    public init(effect: String? = nil, effectNamespace: String? = nil, speed: String? = nil, advancesOnClick: Bool? = nil, advanceAfterMilliseconds: UInt32? = nil, durationMilliseconds: UInt32? = nil, rawXML: String = "") {
+        self.effect = effect; self.effectNamespace = effectNamespace; self.speed = speed; self.advancesOnClick = advancesOnClick; self.advanceAfterMilliseconds = advanceAfterMilliseconds; self.durationMilliseconds = durationMilliseconds; self.rawXML = rawXML
     }
 }
 /// timingの原本構造。属性キーは名前空間つき属性ではURI|localName。
 public struct TimingNode: Sendable, Equatable, Codable {
+    public var nativeProperties: [String:NativeValue]?
     public var name: String
     public var namespace: String
     public var attributes: [String: String]

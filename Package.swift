@@ -7,6 +7,9 @@ let package = Package(
         .library(name: "SlideCore", targets: ["SlideCore"]),
         .library(name: "SlidePPTX", targets: ["SlidePPTX"]),
         .library(name: "SlideODP", targets: ["SlideODP"]),
+        .library(name: "SlideDecrypt", targets: ["SlideDecrypt"]),
+        .library(name: "SlideKeynote", targets: ["SlideKeynote"]),
+        .library(name: "SlideLegacy", targets: ["SlideLegacy"]),
         .library(name: "SwiftSlides", targets: ["SwiftSlides"]),
         .executable(name: "swiftslides", targets: ["SwiftSlidesCLI"])
     ],
@@ -15,9 +18,12 @@ let package = Package(
         .target(name: "SlideCore", dependencies: ["CZlib"]),
         .target(name: "SlidePPTX", dependencies: ["SlideCore"]),
         .target(name: "SlideODP", dependencies: ["SlideCore"]),
-        .target(name: "SwiftSlides", dependencies: ["SlideCore", "SlidePPTX", "SlideODP"]),
+        .target(name: "SlideKeynote", dependencies: ["SlideCore"]),
+        .target(name: "SlideLegacy", dependencies: ["SlideCore"]),
+        .target(name: "SwiftSlides", dependencies: ["SlideCore", "SlidePPTX", "SlideODP", "SlideKeynote", "SlideLegacy"]),
+        .target(name: "SlideDecrypt", dependencies: ["SwiftSlides", "CZlib"]),
         .executableTarget(name: "SwiftSlidesCLI", dependencies: ["SwiftSlides"]),
-        .testTarget(name: "SwiftSlidesTests", dependencies: ["SwiftSlides"], resources: [.copy("Fixtures")]),
+        .testTarget(name: "SwiftSlidesTests", dependencies: ["SwiftSlides", "SlideDecrypt"], resources: [.copy("Fixtures")]),
         .testTarget(name: "PartialLinkTests", dependencies: ["SlideCore", "SlidePPTX", "SlideODP"])
     ],
     swiftLanguageModes: [.v6]

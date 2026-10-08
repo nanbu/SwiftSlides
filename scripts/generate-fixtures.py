@@ -36,7 +36,7 @@ g = s.shapes.add_group_shape(); g.name = 'Grouped'; g.shapes.add_shape(MSO_SHAPE
 s2 = p.slides.add_slide(p.slide_layouts[6]); s2.name = 'Metrics'
 data = CategoryChartData(); data.categories = ['Q1','Q2']; data.add_series('Revenue',[10,14]); s2.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED,Pt(60),Pt(80),Pt(500),Pt(300),data)
 s2.shapes.add_textbox(Pt(60),Pt(30),Pt(500),Pt(40)).text = 'Metrics'
-p.save(root/'python-pptx.pptx')
+p.write(root/'python-pptx.pptx')
 # Oracle is read through python-pptx, not SwiftSlides or its fixture XML parser.
 q = Presentation(root/'python-pptx.pptx')
 oracle = {'producer':'python-pptx','slides':len(q.slides),'width':q.slide_width/12700,'height':q.slide_height/12700,'title':q.core_properties.title,'headline':q.slides[0].shapes[0].text,'font':q.slides[0].shapes[0].text_frame.paragraphs[0].runs[0].font.name,'font_size':q.slides[0].shapes[0].text_frame.paragraphs[0].runs[0].font.size.pt,'table':[[cell.text for cell in row.cells] for row in q.slides[0].shapes[4].table.rows]}

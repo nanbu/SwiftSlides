@@ -16,11 +16,13 @@ public struct SlideReadResult: Sendable {
 }
 /// codecが所有する不変の索引。操作ごとに解析状態を所有する。
 public protocol PresentationSlideSource: Sendable {
+    var cacheStatistics: ReadingCacheStatistics? { get }
     var summary: PresentationSummary { get }
     var slideDescriptors: [SlideDescriptor] { get }
     func slide(at index: Int) throws -> SlideReadResult
     func asset(at path: String) throws -> Data
 }
+extension PresentationSlideSource { public var cacheStatistics: ReadingCacheStatistics? { nil } }
 /// 選択読取を追加するcodecの能力。既存PresentationCodecの実装を変更しない。
 public protocol SlideReadingCodec: PresentationCodec {
     func openSlides(_ data: Data, options: ReadOptions) throws -> any PresentationSlideSource
@@ -32,23 +34,57 @@ public struct SlideReader: Sendable {
     private let source: any PresentationSlideSource
     private let indices: [String:Int]
     public var summary: PresentationSummary { source.summary }
+    public var cacheStatistics: ReadingCacheStatistics? { source.cacheStatistics }
     public var slideDescriptors: [SlideDescriptor] { source.slideDescriptors }
     public init(data: Data, codecs: CodecSet, format: PresentationFormat? = nil, options: ReadOptions = .init()) throws {
         try Task.checkCancellation()
         let format = try format ?? PresentationFormat.detect(data,limits:options.limits)
         guard let codec = try codecs.codec(format) as? any SlideReadingCodec else { throw SlideError.unsupportedContainer("\(format.rawValue)の選択readerは未提供です") }
         source = try codec.openSlides(data,options:options)
-        var indices: [String:Int] = [:]
-        for (index,descriptor) in source.slideDescriptors.enumerated() {
-            guard !descriptor.id.isEmpty, indices[descriptor.id] == nil else { throw SlideError.corruptedPackage("空または重複reader slide ID") }
-            indices[descriptor.id] = index
-        }
-        self.indices = indices
+        self.indices = try Self.index(source)
         try Task.checkCancellation()
     }
-    public init(contentsOf url: URL, codecs: CodecSet, options: ReadOptions = .init()) throws {
+    public init(contentsOf url: URL, codecs: CodecSet, format: PresentationFormat? = nil, options: ReadOptions = .init()) throws {
         try Task.checkCancellation()
-        try self.init(data:Data(contentsOf:url),codecs:codecs,options:options)
+        try self.init(data:PackageInput.read(url,limits:options.limits),codecs:codecs,format:format,options:options)
+    }
+    /// URLの開いたdescriptorから部分読取。cache上限は圧縮bytesのcacheに適用する。
+    public init(fileBackedURL url: URL, codecs: CodecSet, format: PresentationFormat? = nil, options: ReadOptions = .init(), cacheBytes: Int = 8 << 20) throws {
+        try Task.checkCancellation()
+        guard cacheBytes >= 0 else { throw SlideError.invalidModel("file-backed cache予算") }
+        // Guardの索引用descriptorにはcacheを作らず、codec側だけに全予算を渡す。
+        let archive = try PackageArchive(contentsOf: url, limits: options.limits, cacheBytes: 0)
+        let detected: PresentationFormat
+        if let format { detected = format }
+        else if archive.entries["mimetype"] != nil, String(data: try archive.read("mimetype"), encoding: .utf8) == "application/vnd.oasis.opendocument.presentation" { detected = .odp }
+        else if archive.entries["Index/Document.iwa"] != nil || archive.entries["Index.zip"] != nil { detected = .keynote }
+        else { detected = try OPCPackage(archive: archive, limits: options.limits).format }
+        guard let codec = try codecs.codec(detected) as? any FileSlideReadingCodec else { throw SlideError.unsupportedContainer("file-backed codecなし") }
+        let opened = try codec.openSlides(contentsOf: url, options: options, cacheBytes: cacheBytes)
+        try archive.validateFile()
+        source = FileGuardedSource(source: opened, archive: archive)
+        indices = try Self.index(source)
+        try Task.checkCancellation()
+    }
+    private static func index(_ source: any PresentationSlideSource) throws -> [String: Int] {
+        let descriptors = source.slideDescriptors
+        guard descriptors.count == source.summary.slideCount else { throw SlideError.corruptedPackage("reader件数の不一致") }
+        var indices: [String: Int] = [:]
+        indices.reserveCapacity(descriptors.count)
+        for (index, descriptor) in descriptors.enumerated() {
+            try Task.checkCancellation()
+            guard descriptor.index == index, !descriptor.id.isEmpty,
+                  indices.updateValue(index, forKey: descriptor.id) == nil else {
+                throw SlideError.corruptedPackage("readerのindex・IDが不正です")
+            }
+        }
+        return indices
+    }
+    public init(fileBackedURL url: URL, codecs: CodecSet, format: PresentationFormat? = nil, options: ReadOptions = .init(), cacheBudget: ReaderCacheBudget) throws {
+        guard cacheBudget.totalBytes >= 0 else { throw SlideError.invalidModel("共有cache予算") }
+        let compressed = cacheBudget.totalBytes / 2
+        var options = options; options.indexedCacheBytes = cacheBudget.totalBytes - compressed
+        try self.init(fileBackedURL:url,codecs:codecs,format:format,options:options,cacheBytes:compressed)
     }
     public func slide(id: String) throws -> SlideReadResult {
         try Task.checkCancellation()
@@ -67,11 +103,19 @@ public struct SlideReader: Sendable {
     private func slideSync(id: String) throws -> SlideReadResult { try slide(id:id) }
     /// next()ごとに一枚だけ読む。background producerや先読みはない。
     public func slides(selection: SlideSelection = .all) throws -> SlideSequence {
+        try Task.checkCancellation()
         let ids: [String]
         switch selection { case .all: ids = slideDescriptors.map(\.id); case .ids(let selected): ids = selected }
         var seen: Set<String> = []
         for id in ids { guard indices[id] != nil, seen.insert(id).inserted else { throw SlideError.invalidModel("欠落または重複した選択ID: \(id)") } }
         return .init(reader:self,ids:ids)
+    }
+    /// 同一索引から指定件数だけ並列に読み、結果は選択順で返す。失敗時は残りを取り消す。
+    @concurrent public func readSlides(selection: SlideSelection = .all, maxConcurrentReads: Int = 4) async throws -> [SlideReadResult] {
+        let ids = try slides(selection:selection).ids
+        return try await boundedMap(ids, maxConcurrent: maxConcurrentReads) { id in
+            try await self.slide(id: id)
+        }
     }
     public struct SlideSequence: AsyncSequence, Sendable {
         public typealias Element = SlideReadResult
@@ -93,16 +137,40 @@ public struct SlideReader: Sendable {
 }
 
 extension CodecSet {
+    public func fileSlideReader(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init(), cacheBudget: ReaderCacheBudget) throws -> SlideReader {
+        try SlideReader(fileBackedURL: url, codecs: self, format: format, options: options, cacheBudget: cacheBudget)
+    }
+    @concurrent public func fileSlideReader(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init(), cacheBudget: ReaderCacheBudget) async throws -> SlideReader {
+        try SlideReader(fileBackedURL: url, codecs: self, format: format, options: options, cacheBudget: cacheBudget)
+    }
     public func slideReader(_ data: Data, format: PresentationFormat? = nil, options: ReadOptions = .init()) throws -> SlideReader {
         try SlideReader(data: data, codecs: self, format: format, options: options)
     }
-    public func slideReader(contentsOf url: URL, options: ReadOptions = .init()) throws -> SlideReader {
-        try SlideReader(contentsOf: url, codecs: self, options: options)
+    public func slideReader(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init()) throws -> SlideReader {
+        try SlideReader(contentsOf: url, codecs: self, format: format, options: options)
     }
     @concurrent public func slideReader(_ data: Data, format: PresentationFormat? = nil, options: ReadOptions = .init()) async throws -> SlideReader {
         try SlideReader(data: data, codecs: self, format: format, options: options)
     }
-    @concurrent public func slideReader(contentsOf url: URL, options: ReadOptions = .init()) async throws -> SlideReader {
-        try SlideReader(contentsOf: url, codecs: self, options: options)
+    @concurrent public func slideReader(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init()) async throws -> SlideReader {
+        try SlideReader(contentsOf: url, codecs: self, format: format, options: options)
     }
+}
+
+
+public protocol FileSlideReadingCodec: SlideReadingCodec {
+    func openSlides(contentsOf url: URL, options: ReadOptions, cacheBytes: Int) throws -> any PresentationSlideSource
+}
+private struct FileGuardedSource: PresentationSlideSource {
+    let source: any PresentationSlideSource
+    let archive: PackageArchive
+    var summary: PresentationSummary { source.summary }
+    var cacheStatistics: ReadingCacheStatistics? { source.cacheStatistics }
+    var slideDescriptors: [SlideDescriptor] { source.slideDescriptors }
+    func slide(at index: Int) throws -> SlideReadResult { try archive.validateFile(); let result = try source.slide(at: index); try archive.validateFile(); return result }
+    func asset(at path: String) throws -> Data { try archive.validateFile(); let result = try source.asset(at: path); try archive.validateFile(); return result }
+}
+extension CodecSet {
+    public func fileSlideReader(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init(), cacheBytes: Int = 8 << 20) throws -> SlideReader { try .init(fileBackedURL: url, codecs: self, format: format, options: options, cacheBytes: cacheBytes) }
+    @concurrent public func fileSlideReader(contentsOf url: URL, format: PresentationFormat? = nil, options: ReadOptions = .init(), cacheBytes: Int = 8 << 20) async throws -> SlideReader { try SlideReader(fileBackedURL: url, codecs: self, format: format, options: options, cacheBytes: cacheBytes) }
 }

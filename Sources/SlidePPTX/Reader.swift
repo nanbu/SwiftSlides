@@ -2,36 +2,36 @@ import Foundation
 import SlideCore
 
 /// PowerPointのOPCとPresentationMLを読み書きする形式別コーデック。
-public struct PPTXCodec: PreservationInspectingCodec, SlideImportingCodec {
-    public let format: PresentationFormat
-    public init(macroEnabled: Bool = false) { format = macroEnabled ? .pptm : .pptx }
-    public var capabilities: CodecCapabilities {
+package struct PPTXCodec: PreservationInspectingCodec, SlideImportingCodec {
+    package let format: PresentationFormat
+    package init(macroEnabled: Bool = false) { format = macroEnabled ? .pptm : .pptx }
+    package var capabilities: CodecCapabilities {
         .init(format: format, operations: [
             .inspect: .partial, .read: .partial, .create: format == .pptx ? .partial : .unsupported,
             .edit: .partial, .preserve: .partial, .convert: .unsupported, .render: .unsupported, .play: .unsupported
         ], notes: "直接指定の基本要素と部分編集。継承外観・再生は未解釈。未知内容は原本保持、危険編集は拒否。新規作成はPPTXのみ。詳細は対応台帳を参照。", features: PPTXFeatureCapabilities.features(for: format))
     }
-    public func read(_ data: Data, options: ReadOptions = .init()) throws -> ReadResult {
+    package func read(_ data: Data, options: ReadOptions = .init()) throws -> ReadResult {
         let reader = try PPTXReader(data, options: options)
         guard reader.package.format == format else { throw SlideError.unknownFormat }
         return try reader.read()
     }
-    public func inspect(_ data: Data, limits: PackageLimits = .init()) throws -> PresentationSummary {
-        let reader = try PPTXReader(data, options: .init(limits: limits, includeNotes: false))
+    package func inspect(_ data: Data, options: InspectOptions = .init()) throws -> PresentationSummary {
+        let reader = try PPTXReader(data, options: .init(limits: options.limits, includesNotes: false))
         guard reader.package.format == format else { throw SlideError.unknownFormat }
         return try reader.inspect()
     }
-    public func write(_ presentation: Presentation, options: WriteOptions = .init()) throws -> WriteResult { try PPTXWriter(presentation, format: format, options: options).write() }
-    public func inspectPreservation(_ presentation: Presentation) throws -> PackageGraph {
+    package func write(_ presentation: Presentation, options: WriteOptions = .init()) throws -> WriteResult { try PPTXWriter(presentation, format: format, options: options).write() }
+    package func inspectPreservation(_ presentation: Presentation) throws -> PackageGraph {
         guard let storage = presentation.storage else { return .init() }
         guard presentation.sourceFormat == format else { throw SlideError.unknownFormat }
         return try PPTXInventory.build(storage)
     }
-    @discardableResult public func importSlide(id: String, from source: Presentation, into destination: inout Presentation,
+    @discardableResult package func importSlide(id: String, from source: Presentation, into destination: inout Presentation,
         at index: Int?, options: SlideImportOptions) throws -> String {
         try PPTXCloner.importSlide(id: id, source: source, destination: &destination, index: index, options: options, duplicate: false, format: format)
     }
-    @discardableResult public func duplicateSlide(id: String, in presentation: inout Presentation, at index: Int?) throws -> String {
+    @discardableResult package func duplicateSlide(id: String, in presentation: inout Presentation, at index: Int?) throws -> String {
         let source = presentation
         return try PPTXCloner.importSlide(id: id, source: source, destination: &presentation, index: index, options: .init(), duplicate: true, format: format)
     }
@@ -101,7 +101,7 @@ struct PPTXReader {
         if let raw = root.attr("firstSlideNum"), Int(raw) == nil { throw SlideError.corruptedPackage("最初のスライド番号が不正です") }
         presentation.firstSlideNumber = root.attr("firstSlideNum").flatMap(Int.init)
         presentation.setDefaultTextStyle(listStyle(root.child("defaultTextStyle"), part: package.mainPart))
-        let storage = Preservation(data: data, archive: package.archive, mainPart: package.mainPart, limits: options.limits, originalSize: size, originalSlides: slides, originalMetadata: metadata, originalTheme: presentation.theme, slidePaths: slidePaths, notesPaths: notesPaths, notesOmitted: !options.includeNotes, originalFirstSlideNumber: presentation.firstSlideNumber)
+        let storage = Preservation(data: data, archive: package.archive, mainPart: package.mainPart, limits: options.limits, originalSize: size, originalSlides: slides, originalMetadata: metadata, originalTheme: presentation.theme, slidePaths: slidePaths, notesPaths: notesPaths, notesOmitted: !options.includesNotes, originalFirstSlideNumber: presentation.firstSlideNumber)
         presentation.preserve(storage, format: package.format, warnings: warnings.result, parts: package.parts, themes: sourceThemes)
         try Task.checkCancellation()
         return .init(presentation: presentation)
@@ -114,13 +114,13 @@ struct PPTXReader {
         var slide = Slide(id: id, name: c.attr("name") ?? "", elements: try elements(sp, rels: rels, part: path, slideID: id, ids: &ids), background: try fill(c.child("bg")?.child("bgPr"), part: path))
         slide.isHidden = ["0","false"].contains(node.attr("show") ?? "1")
         slide.layoutPath = rels.values.first { $0.type == "slideLayout" }?.path
-        slide.showMasterShapes = boolean(node.attr("showMasterSp"))
+        slide.showsMasterShapes = boolean(node.attr("showMasterSp"))
         slide.colorMapOverride = node.child("clrMapOvr")?.child("overrideClrMapping")?.attributes
         slide.usesMasterColorMapping = node.child("clrMapOvr").map { $0.child("masterClrMapping") != nil }
         slide.backgroundReference = styleReference(c.child("bg")?.child("bgRef"), part: path)
         slide.themeOverridePath = rels.values.first { $0.type == "themeOverride" }?.path
         if let notes = rels.values.first(where: { $0.type == "notesSlide" })?.path {
-            if options.includeNotes {
+            if options.includesNotes {
                 let n = try tree(notes)
                 guard n.isP, n.name == "notes" else { throw SlideError.corruptedPackage("不正なnotes: \(notes)") }
                 let paragraphs = try (n.child("cSld")?.child("spTree")?.named("sp") ?? []).filter { shape in
@@ -132,6 +132,9 @@ struct PPTXReader {
         }
         let commentResult = try comments(rels: rels, part: path, slideID: id)
         slide.comments = commentResult.comments.isEmpty ? nil : commentResult.comments
+        let threads = try commentThreads(rels: rels, slideID: id)
+        slide.commentThreads = threads.isEmpty ? nil : threads
+        slide.media = try media(in: node.child("transition"), rels: rels, part: path)
         var native = commentResult.native
         for child in node.children where !(child.isP && ["cSld","clrMapOvr"].contains(child.name)) {
             if child.isP, child.name == "transition" { slide.transition = try transition(child,part:path,slideID:id) }
@@ -181,11 +184,14 @@ struct PPTXReader {
             let props = node.child(kind == .group ? "grpSpPr" : "spPr")
             let xfrm = props?.child("xfrm") ?? node.child("xfrm")
             var e = Element(id: id, name: cnv?.attr("name") ?? "", kind: kind, frame: rect(xfrm), geometry: props?.child("prstGeom").flatMap { $0.attr("prst") }.map { ShapeGeometry($0) }, fill: try fill(props, part: part), stroke: stroke(props?.child("ln"), part: part))
+            e.sourceProperties = try SourceXMLNode(node)
             e.customGeometry = try customGeometry(props?.child("custGeom"), part: part)
             e.effects = effects(props,style:node.child("style"),part:part)
+            e.scene3D = try scene3D(drawingChild(props, "scene3d"), part: part)
+            e.shape3D = try shape3D(drawingChild(props, "sp3d"), part: part)
             e.isTextBox = on(node.child("nvSpPr")?.child("cNvSpPr")?.attr("txBox"))
             e.rotation = (xfrm?.attr("rot").flatMap(Double.init) ?? 0) / 60_000
-            e.flipHorizontal = on(xfrm?.attr("flipH")); e.flipVertical = on(xfrm?.attr("flipV"))
+            e.isFlippedHorizontally = on(xfrm?.attr("flipH")); e.isFlippedVertically = on(xfrm?.attr("flipV"))
             if let ph = node.child(nvName)?.child("nvPr")?.child("ph") { e.placeholder = .init(kind: ph.attr("type") ?? "obj", index: ph.attr("idx").flatMap(Int.init)); warnings.add(.uninterpretedFormatting, part: part, element: "ph", message: "プレースホルダーのmaster/layout継承値は計算しません") }
             if let body = node.child("txBody") { e.text = try text(body, rels: rels, part: part) }
             if kind == .image {
@@ -200,6 +206,7 @@ struct PPTXReader {
             if kind == .opaque {
                 let graphic = node.child("graphic")?.child("graphicData")
                 e.chart = try chart(graphic, rels: rels, part: part)
+                e.model3D = try model3D(graphic, rels: rels, part: part)
                 e.diagram = try diagram(graphic, rels: rels, part: part)
                 e.setRawXML(node.xml); warn(part,node,feature: "OBJ-011",slideID: slideID,elementID: id) }
             let extraProperties = props?.children.filter { !($0.isA && ["xfrm","prstGeom","custGeom","effectLst","effectDag","solidFill","noFill","gradFill","pattFill","blipFill","ln"].contains($0.name)) } ?? []
@@ -256,9 +263,9 @@ struct PPTXReader {
     func textStyle(_ node: MarkupNode?, part: String) -> TextStyle {
         guard let node else { return .init() }
         var result = TextStyle(font: .init(family: node.child("latin")?.attr("typeface"), size: node.attr("sz").flatMap(Double.init).map { $0 / 100 }, eastAsianFamily: node.child("ea")?.attr("typeface"), complexScriptFamily: node.child("cs")?.attr("typeface")), bold: boolean(node.attr("b")), italic: boolean(node.attr("i")), underline: node.attr("u").map { $0 != "none" }, color: color(node.child("solidFill"), part: part), language: node.attr("lang"))
-        if let u = node.attr("u"), !["none","sng"].contains(u) { warn(part,node,.uninterpretedFormatting,"下線の種類を原本で保持します") }
-        for key in node.attributes.keys where !["sz","b","i","u","lang","dirty","smtClean"].contains(key) { warnings.add(.uninterpretedFormatting, part: part, element: key, message: "未対応の文字属性を原本で保持します") }
-        for c in node.children where !["latin","ea","cs","solidFill","hlinkClick"].contains(c.name) { warn(part,c,.uninterpretedFormatting) }
+        result.appearance = textAppearance(node, part: part)
+        for key in node.attributes.keys where !["sz","b","i","u","lang","dirty","smtClean","spc","baseline","cap","strike","kern"].contains(key) { warnings.add(.uninterpretedFormatting, part: part, element: key, message: "未対応の文字属性を原本で保持します") }
+        for c in node.children where !["latin","ea","cs","solidFill","hlinkClick","ln","effectLst","effectDag","scene3d","sp3d","gradFill","noFill","pattFill","blipFill"].contains(c.name) { warn(part,c,.uninterpretedFormatting) }
         if result.font.size?.isFinite == false { result.font.size = nil; warn(part,node,.uninterpretedFormatting) }
         return result
     }
@@ -272,6 +279,10 @@ struct PPTXReader {
             var runs: [TextRun] = []
             for child in p.children {
                 try Task.checkCancellation()
+                if let equation = try equation(child, part: part) {
+                    var run = TextRun(equation.lexicalText)
+                    run.equation = equation; runs.append(run); continue
+                }
                 switch child.isA ? child.name : "" {
                 case "r","fld":
                     var run = TextRun(child.child("t")?.text ?? "", style: textStyle(child.child("rPr"), part: part))
@@ -297,7 +308,9 @@ struct PPTXReader {
             insets = Insets(top:margin("tIns",45_720),left:margin("lIns",91_440),bottom:margin("bIns",45_720),right:margin("rIns",91_440))
         }
         if let body { for key in body.attributes.keys where !["lIns","rIns","tIns","bIns","anchor","wrap"].contains(key) { warnings.add(.uninterpretedFormatting,part:part,element:key,message:"テキスト領域の追加属性を原本で保持します") }; for child in body.children { warn(part,child,.uninterpretedFormatting) } }
-                return .init(paragraphs:paragraphs,insets:insets,verticalAlignment:body?.attr("anchor").flatMap(VerticalAlignment.init),wrap:body?.attr("wrap").map { $0 != "none" },listStyle:node.child("lstStyle").flatMap { $0.children.isEmpty ? nil : listStyle($0,part:part) })
+        var result = TextBody(paragraphs:paragraphs,insets:insets,verticalAlignment:body?.attr("anchor").flatMap(VerticalAlignment.init),wrapsText:body?.attr("wrap").map { $0 != "none" },listStyle:node.child("lstStyle").flatMap { $0.children.isEmpty ? nil : listStyle($0,part:part) })
+        if let body { result.appearance = textAppearance(body, part: part) }
+        return result
     }
     func table(_ node: MarkupNode, rels: [String:Relationship], part: String) throws -> Table {
         let rowNodes = node.named("tr")
@@ -334,7 +347,7 @@ struct PPTXReader {
 
 
 extension PPTXCodec: SlideReadingCodec {
-    public func openSlides(_ data: Data, options: ReadOptions) throws -> any PresentationSlideSource {
+    package func openSlides(_ data: Data, options: ReadOptions) throws -> any PresentationSlideSource {
         let reader = try PPTXReader(data,options:options)
         guard reader.package.format == format else { throw SlideError.unknownFormat }
         let (_,size,list,_) = try reader.header()
@@ -343,6 +356,7 @@ extension PPTXCodec: SlideReadingCodec {
     }
 }
 private struct PPTXSlideSource: PresentationSlideSource {
+    var cacheStatistics: ReadingCacheStatistics? { package.archive.cacheStatistics }
     let data: Data
     let package: OPCPackage
     let options: ReadOptions
@@ -356,4 +370,15 @@ private struct PPTXSlideSource: PresentationSlideSource {
         return .init(slide:slide,warnings:reader.warnings.result)
     }
     func asset(at path: String) throws -> Data { try package.archive.read(path) }
+}
+
+
+extension PPTXCodec: FileSlideReadingCodec {
+    package func openSlides(contentsOf url: URL, options: ReadOptions, cacheBytes: Int) throws -> any PresentationSlideSource {
+        let package = try OPCPackage(archive: PackageArchive(contentsOf: url, limits: options.limits, cacheBytes: cacheBytes), limits: options.limits)
+        guard package.format == format else { throw SlideError.unknownFormat }
+        let reader = try PPTXReader(Data(), options: options, package: package)
+        let (_, size, list, _) = try reader.header()
+        return try PPTXSlideSource(data: Data(), package: package, options: options, summary: .init(format: format, size: size, slideCount: list.count, metadata: reader.metadata(), parts: package.parts), list: list)
+    }
 }

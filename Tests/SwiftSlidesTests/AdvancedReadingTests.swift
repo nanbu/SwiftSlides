@@ -12,7 +12,7 @@ func advancedFillsCropAndCellBorders(_ name: String) throws {
     guard case .gradient(let gradient) = e.fill else { Issue.record("gradient missing"); return }
     #expect(gradient.stops.map(\.position) == [0,0.75,1])
     #expect(gradient.stops[0].color == .rgb("FF0000"))
-    #expect(gradient.angle == 90 && gradient.scaled == false && gradient.rotateWithShape == false)
+    #expect(gradient.angle == 90 && gradient.scaled == false && gradient.rotatesWithShape == false)
     #expect(gradient.flip == "x" && gradient.rawXML.contains("gsLst"))
     guard case .pattern(let pattern) = slide.elements.first(where: { $0.name == "Pattern" })?.fill else { Issue.record("pattern missing"); return }
     #expect(pattern.preset == "pct20" && pattern.foreground == .rgb("123456") && pattern.background == .theme("bg1"))
@@ -27,7 +27,7 @@ func advancedFillsCropAndCellBorders(_ name: String) throws {
     #expect(cell.borders?.first { $0.edge == .right }?.stroke?.width == 2)
     #expect(cell.borders?.first { $0.edge == .top }?.isExplicitlyNone == true)
     #expect(cell.borders?.first { $0.edge == .top }?.stroke == nil)
-    #expect(try p.data() == fixture(name))
+    #expect(try p.write().data == fixture(name))
 }
 
 @Test(arguments: advancedFixtures)
@@ -35,7 +35,7 @@ func transitionsTimingMediaAndComments(_ name: String) throws {
     let p = try Presentation(data:fixture(name)), slide = p.slides[0]
     let transition = try #require(slide.transition)
     #expect(transition.effect == "push" && transition.speed == "slow")
-    #expect(transition.advanceOnClick == false && transition.advanceAfterMilliseconds == 1500 && transition.durationMilliseconds == 750)
+    #expect(transition.advancesOnClick == false && transition.advanceAfterMilliseconds == 1500 && transition.durationMilliseconds == 750)
     let timing = try #require(slide.timing)
     #expect(timing.targetElementIDs == ["30"])
     let rootTime = try #require(timing.root.children.first?.children.first?.children.first)
@@ -60,12 +60,12 @@ func transitionsTimingMediaAndComments(_ name: String) throws {
 func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String) throws {
     let source = try fixture(name), p = try Presentation(data:source)
     var moved = p; moved.slides[0].elements[0].frame?.x = 72
-    let reread = try Presentation(data:moved.data(options:.init(strict:true)))
+    let reread = try Presentation(data:moved.write(options:.init(strict:true)).data)
     #expect(reread.slides[0].transition == p.slides[0].transition && reread.slides[0].timing == p.slides[0].timing)
     #expect(reread.slides[0].comments == p.slides[0].comments)
     #expect(reread.slides[0].elements.first { $0.name == "Gradient" }?.fill == p.slides[0].elements.first { $0.name == "Gradient" }?.fill)
     let mutations: [(inout Presentation) -> Void] = [
-        { $0.slides[0].transition?.advanceOnClick = true },
+        { $0.slides[0].transition?.advancesOnClick = true },
         { $0.slides[0].timing?.targetElementIDs = [] },
         { $0.slides[0].comments?[0].text = "changed" },
         { let i = $0.slides[0].elements.firstIndex { $0.name == "Gradient" }!; $0.slides[0].elements[i].fill = .solid(.white) },
@@ -75,9 +75,9 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
         { let i = $0.slides[0].elements.firstIndex { $0.name == "Audio poster" }!; $0.slides[0].elements[i].media = nil },
         { $0.slides[0].nativeFeatures = nil }
     ]
-    for mutate in mutations { var candidate = p; mutate(&candidate); #expect(throws:SlideError.self) { try candidate.data() } }
+    for mutate in mutations { var candidate = p; mutate(&candidate); #expect(throws:SlideError.self) { try candidate.write().data } }
     let shape = try #require(p.slides[0].elements.first { $0.name == "Gradient" })
-    #expect(throws:SlideError.self) { try Presentation(slides:[Slide(elements:[shape])]).data() }
+    #expect(throws:SlideError.self) { try Presentation(slides:[Slide(elements:[shape])]).write().data }
 }
 
 @Test func tableTextPatchKeepsDistinctBordersAndAdditionalXML() throws {
@@ -91,7 +91,7 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
     let i = try #require(p.slides[0].elements.firstIndex { $0.table != nil })
     let before = p.slides[0].elements[i].table!.rows[0][0].borders
     p.slides[0].elements[i].table?.rows[0][0].text = .init("Changed fictional cell")
-    let result = try p.encoded(), q = try Presentation(data:result.data)
+    let result = try p.write(), q = try Presentation(data:result.data)
     #expect(q.slides[0].elements[i].table?.rows[0][0].borders == before)
     #expect(q.slides[0].elements[i].table?.rows[0][0].text.plainText == "Changed fictional cell")
     #expect(q.slides[0].transition == p.slides[0].transition)
@@ -99,12 +99,12 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
     let extra = try #require(MarkupNode.parse(sourcePart,part:"slide1.xml",limits:.init()).descendants("cellExtra",ns:"urn:fictional:cell").first)
     #expect(extra.text == "Fictional extension" && extra.attr("flag") == "keep")
     p.slides[0].elements[i].table?.rows[0][0].borders = nil
-    #expect(throws:SlideError.self) { try p.data() }
+    #expect(throws:SlideError.self) { try p.write().data }
     for field in ["value","formula"] {
         var candidate = q
         if field == "value" { candidate.slides[0].elements[i].table?.rows[0][0].value = .init(type:"float",lexicalValue:"42") }
         else { candidate.slides[0].elements[i].table?.rows[0][0].formula = "of:=1+1" }
-        #expect(throws:SlideError.self) { try candidate.data() }
+        #expect(throws:SlideError.self) { try candidate.write().data }
     }
 }
 
@@ -117,7 +117,7 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
     var p = Presentation(slides:[Slide()])
     p.slides[0].addTable(.init(columnWidths:[20],rowHeights:[20],rows:[[TableCell("A")]]),frame:.init(x:0,y:0,width:20,height:20))
     var second = p.slides[0]; second.id = "second"; p.slides.append(second)
-    let data = try p.data()
+    let data = try p.write().data
     #expect(throws:SlideError.self) { try Presentation(data:data,options:.init(limits:.init(maxTableCells:1))) }
     let selected = try SlideReader(data:data,options:.init(limits:.init(maxTableCells:1)))
     #expect(try selected.slide(id:selected.slideDescriptors[1].id).slide.elements.count == 1)
@@ -147,7 +147,7 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
     let p = try Presentation(data:data)
     guard case .picture(let picture) = p.slides[0].elements.first(where: { $0.name == "Picture fill" })?.fill else { Issue.record("missing fill"); return }
     #expect(picture.image?.path == nil && picture.image?.externalTarget == "https://example.com/fictional.png")
-    #expect(try p.data() == data)
+    #expect(try p.write().data == data)
 }
 
 @Test func odpTypedCellsKeepLexicalValuesAndFormulaSeparateFromText() throws {
@@ -190,7 +190,7 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
     #expect(slide.timing?.targetElementIDs == ["30"])
     #expect(slide.nativeFeatures?.contains { $0.name == "timing" && $0.namespace == "urn:fictional:extension" } == true)
     #expect(p.readDiagnostics.contains { $0.message.contains("直接stop") })
-    #expect(try p.data() == data)
+    #expect(try p.write().data == data)
 }
 
 @Test func modernCommentsAndExternalVideoRetainDescriptors() throws {
@@ -203,15 +203,16 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
         parts[path] = Data(root.xml.utf8)
         let slide = "ppt/slides/slide1.xml"
         parts[slide] = Data(String(decoding:parts[slide]!,as:UTF8.self).replacingOccurrences(of:"audioFile",with:"videoFile").utf8)
-        parts["ppt/comments/advanced.xml"] = Data("<m:cmLst xmlns:m=\"http://schemas.microsoft.com/office/powerpoint/2018/8/main\"><m:cm id=\"fictional\"><m:text>Fictional modern comment</m:text></m:cm></m:cmLst>".utf8)
+        parts["ppt/comments/advanced.xml"] = Data("<m:cmLst xmlns:m=\"http://schemas.microsoft.com/office/powerpoint/2018/8/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><m:cm id=\"fictional\" authorId=\"reviewer\"><m:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>Fictional modern comment</a:t></a:r></a:p></m:txBody></m:cm></m:cmLst>".utf8)
     }
     let p = try Presentation(data:data), slide = p.slides[0]
     #expect(slide.comments == nil)
     #expect(slide.nativeFeatures?.contains { $0.part == "ppt/comments/advanced.xml" && $0.xml.contains("Fictional modern comment") } == true)
     let video = try #require(slide.elements.first { $0.name == "Audio poster" }?.media?.first)
     #expect(video.kind == .video && video.reference.path == nil && video.reference.externalTarget == "https://example.com/fictional.mp4")
-    #expect(p.readDiagnostics.contains { $0.message.contains("コメント形式") })
-    #expect(try p.data() == data)
+    #expect(slide.commentThreads?.first?.text.plainText == "Fictional modern comment")
+    #expect(p.readDiagnostics.contains { $0.message.contains("作者が未解決") })
+    #expect(try p.write().data == data)
 }
 
 @Test func libreOfficeAdvancedOutputReadsProducerValues() throws {
@@ -225,7 +226,7 @@ func advancedProjectionPreservesUnrelatedEditsAndRefusesMutations(_ name: String
     #expect(slide.elements.contains { if case .picture = $0.fill { true } else { false } })
     #expect(slide.elements.contains { $0.media?.contains { $0.kind == .audio && $0.reference.path != nil } == true })
     #expect(slide.comments?.first?.text == "Fictional review comment" && slide.comments?.first?.authorName == "Fictional Reviewer")
-    #expect(try p.data() == data)
+    #expect(try p.write().data == data)
 }
 
 @Test func advancedModelPropertiesDecodeWhenAbsentInExistingJSON() throws {

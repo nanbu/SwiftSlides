@@ -46,10 +46,11 @@ extension PPTXReader {
         for node in list?.children ?? [] {
             if node.isA, node.name == "outerShdw" {
                 func n(_ key: String, _ divisor: Double) -> Double? { node.attr(key).flatMap(Double.init).map { $0 / divisor } }
-                direct?.append(.outerShadow(.init(blurRadius: n("blurRad",12_700), distance: n("dist",12_700), direction: n("dir",60_000), scaleX: percentage(node.attr("sx")), scaleY: percentage(node.attr("sy")), skewX: n("kx",60_000), skewY: n("ky",60_000), alignment: node.attr("algn"), rotateWithShape: boolean(node.attr("rotWithShape")), color: color(node, part: part))))
+                direct?.append(.outerShadow(.init(blurRadius: n("blurRad",12_700), distance: n("dist",12_700), direction: n("dir",60_000), scaleX: percentage(node.attr("sx")), scaleY: percentage(node.attr("sy")), skewX: n("kx",60_000), skewY: n("ky",60_000), alignment: node.attr("algn"), rotatesWithShape: boolean(node.attr("rotWithShape")), color: color(node, part: part))))
+            } else if let effect = drawingEffect(node, part: part) { direct?.append(.drawing(effect))
             } else { direct?.append(.unsupported(name: node.name, xml: node.xml)); warn(part,node,.uninterpretedFormatting,"この効果の解釈・合成は未対応です",feature:"PNT-009") }
         }
-        if let dag { direct = (direct ?? []) + [.unsupported(name: dag.name, xml: dag.xml)]; warn(part,dag,.uninterpretedFormatting,"効果DAGは未対応です",feature:"PNT-009") }
+        if let dag { if let value = drawingEffect(dag, part: part) { direct = (direct ?? []) + [.drawing(value)] } else { direct = (direct ?? []) + [.unsupported(name: dag.name, xml: dag.xml)] } }
         return .init(direct: direct, reference: reference)
     }
     func customGeometry(_ node: MarkupNode?, part: String) throws -> CustomGeometry? {
