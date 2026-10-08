@@ -46,7 +46,7 @@ LibreOffice 26.2.3.2では作例の読み取り、再保存、PDF化を検査。
 公開仕様由来のOOXML XSDを一時的に使い、新規作例のPresentationMLとthemeを検証。スキーマは同梱しません。
 
 iOSでの実行、Windows版PowerPoint、巨大な実務資料、アニメーションの再生、ODP保存・Keynote公開codecは未提供です。ODP読取とKeynote限定試作は以下のE〜Hを参照してください。
-既存master/layoutの実効外観、文字計測、グラデーション等はモデル化しません。未対応情報の保全契約はREADMEの対応表が正典です。
+既存master/layoutの実効外観と文字計測は計算しません。グラデーション等の直接値は2026-10-08に読取投影を追加しました。未対応情報の保全契約はREADMEの対応表が正典です。
 
 ## 再現
 
@@ -90,3 +90,31 @@ Dataのformat指定、登録順と最後のcodec採用、reader/計画エンコ�
 `python3 scripts/check-public-api.py`は独立SwiftPM consumerのCore/PPTX/ODP/umbrellaの4構成をコンパイル・実行。10件の非公開/読み取り専用境界の負例、sync/async保存結果の破棄10件のコンパイラ警告を確認し、明示利用と最後の正例はコンパイル成功しました。CIにも追加しましたが、今回のローカル実行でLinux/iOS/Windowsを検証したとは扱いません。
 
 `verify-interop.py --libreoffice`と`verify-clone-interop.py --libreoffice`で、独立python-pptxによる基本モデルとnotes/chart/workbook/assets/master/ID/依存参照を照合し、通常2文書と複製・取り込み・編集3文書をLibreOfficeで再保存して確認しました。PowerPointの実アプリ検証と外観一致の測定は行っていません。今回のAPI改善の実装・判断は[SwiftSheetsとの比較](api-consistency.md)に記しました。
+
+
+## 追加の読み取り値と実アプリ検証（2026-10-08）
+
+gradient/pattern/image fill、画像crop、セル各辺と対角罫線、遷移、timing木、メディア参照、従来コメント、ODP型付きセル値・式を追加。新投影の変更・新規保存を拒否し、表の同じ行列内の文字・寸法編集では無関係な個別罫線とセル拡張を保持します。PPTX表の文書/選択slide単位のmaxTableCellsを検査します。
+
+架空のTransitional/名前空間置換Strict fixture、外部動画・新コメントURI・省略fill・不正数値・誤relationship・欠落JSON属性を検査。`scripts/verify-advanced-reading.py`は公開CLIの`read-json`とPython標準XML parserを使い、直接値・crop・参照先・各辺・遷移・timing全木・コメント本文を独立照合します。再生と外観一致の検証ではありません。対応契約43行、詳細能力116宣言・45証拠を記録しました。
+
+| アプリ | 操作 | 実測結果と境界 |
+|---|---|---|
+| LibreOffice 26.2.3.2 | advanced-reading.pptxをPPTX再保存→SwiftSlides再読→XML照合 | 2枚、gradient/pattern/image fill、crop、24罫線、遷移、timing、音声参照2件、従来コメント1件を確認。出力をlibreoffice-advanced.pptxとして回帰検査。アプリがcropや線幅を変えており、元入力との値/外観の同一性は保証しない。 |
+| PowerPoint for Mac 16.113.3 | 追加fixtureを開く | 2枚を開封、修復要求を観察せず。閲覧モードのライセンス表示により再保存は未検証。全効果の再生や外観一致は未測定。 |
+| Keynote Creator Studio 15.4 (7051.0.79) | 新規架空資料→PPTX書き出し→SwiftSlides再読→XML照合→Keynote再開封 | 3枚と背景gradient1件（stop・色変換・角度）、クリック進行・速度を照合。設定したプッシュ効果は出力XMLに存在せず、復元しない。Keynote再開封時はフォント欠落の警告あり。 |
+| Keynote Creator Studio 15.4 | advanced-reading.pptx / python-pptx.pptx / libreoffice.pptx / 今回のLibreOffice再保存出力の取り込み | 「ファイルフォーマットが無効」で拒否。自身の書き出しPPTXは開封できた。拒否原因は未特定で、これらの入力のKeynote互換性を成功扱いしない。 |
+
+Keynoteの今回の3枚出力SHA-256は`15dfea53b6c020b94eb15afe4ad87155fc36ecb2aa9ab66ac35b4e83ab18c2ae`。アプリthemeをfixtureとして再配布せず、一時検証出力だけで確認しました。追加の実アプリ検証はmacOS 27.0.1で実施。ネイティブ.keyの公開codec、全機能の意味解釈、旧PPT/暗号、再生・renderは未提供または後続です。
+
+```sh
+python3 scripts/generate-advanced-reading-fixture.py
+swift test
+swift build -c release
+python3 scripts/verify-advanced-reading.py
+python3 scripts/check-public-api.py
+```
+
+任意のアプリ出力は`python3 scripts/verify-advanced-reading.py exported.pptx`で照合できます。LibreOffice再保存入力の生成器は標準OPC namespaceを使います。初期の合成fixtureは関係part/content typesの接頭辞でLibreOfficeが拒否したため修正しており、初期失敗を互換性の成功へ含めません。
+
+ローカル検査: 全136テスト関数（131＋部分リンク5）、Releaseビルド、DocCの1,135公開シンボルとguide、対応表・能力台帳・公開内容127ファイルとGit履歴6 revisionを検査しました。CIへの独立XML照合を追加しましたが、今回のローカル結果をLinux/iOS/Windows実行の検証には転用しません。

@@ -6,6 +6,7 @@ enum ODPFeatureCapabilities {
         .init(id: "E24", fixture: "styles.odp", fixtureSHA256: "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0", test: "odpBasicReadPreservesOriginalAndSeparatesInheritedValues", scope: "ODF 1.3架空fixtureのページ寸法、本文・空白・tab・リンク、automatic直接書式、画像bytes、表表示文字、notesを照合。外観・保存は対象外。"),
         .init(id: "E25", fixture: "styles.odp", fixtureSHA256: "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0", test: "odpStylesResolveDirectNamedAutomaticAndMaster", scope: "familyとautomatic scopeを分離しdefault/named parent/master/direct propertyの値と出典を照合。placeholder外観は対象外。"),
         .init(id: "E26", fixture: "libreoffice.odp", fixtureSHA256: "1e84faf264b006b6e9a817858c33a35c8d347815b69c699e95c9cfc9b1cf7857", test: "libreOfficeODPProducerIsReadableWithLocatedWarnings", scope: "LibreOffice 26.2.3.2が架空PPTXから生成した2枚のODF 1.4で本文とnotesを照合。custom geometryはopaqueの表示文字投影。外観は未検証。"),
+        .init(id: "E43", fixture: "styles.odp", fixtureSHA256: "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0", test: "odpTypedCellsKeepLexicalValuesAndFormulaSeparateFromText", scope: "架空ODF 1.3にfloat/boolean/式を追加し、字句値と表示文字を分離。数値解釈不可をnilで示す。再計算なし。"),
     ]
 
     static func features(for format: PresentationFormat) -> [FeatureCapability] {
@@ -22,6 +23,8 @@ enum ODPFeatureCapabilities {
                 .init(feature: "STY-010", profile: .odf13, operation: .read, status: .partial, evidence: [evidence[1]], notes: "default/named/automatic/drawing-page masterのpropertyと出典の限定解決。placeholder・外観・編集は対象外。"),
                 .init(feature: "TXT-001", profile: .odf14, operation: .read, status: .partial, evidence: [evidence[2]], notes: "LibreOffice生成の指定fixtureで本文・notesを確認。ODF 1.4全要素への対応を意味しない。"),
                 .init(feature: "DOC-009", profile: .odf14, operation: .read, status: .partial, evidence: [evidence[2]], notes: "LibreOffice生成の指定fixtureで本文・notesを確認。ODF 1.4全要素への対応を意味しない。"),
+                .init(feature: "TBL-002", profile: .odf13, operation: .read, status: .partial, evidence: [evidence[3]], notes: "value-type/字句キャッシュ/通貨/原本formulaを表示文字と別に読む。書式・式の評価なし。"),
+                .init(feature: "TBL-010", profile: .odf13, operation: .read, status: .partial, evidence: [evidence[3]], notes: "value-type/字句キャッシュ/通貨/原本formulaを表示文字と別に読む。書式・式の評価なし。"),
             ]
         default: return []
         }

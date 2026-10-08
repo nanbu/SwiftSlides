@@ -51,7 +51,7 @@ extension PPTXReader {
                 for ser in group.children where ser.namespace == ns && ser.name == "ser" {
                     let tx = child(ser,"tx"), props = child(ser,"spPr")
                     series.append(.init(index:val(ser,"idx").flatMap(Int.init),order:val(ser,"order").flatMap(Int.init),title:child(tx,"v")?.text,
-                        titleData:try data(tx.flatMap { child($0,"strRef") == nil ? nil : $0 }),categories:try data(child(ser,"cat")),values:try data(child(ser,"val")),fill:fill(props,part:path),stroke:stroke(props?.child("ln"),part:path),rawXML:ser.xml))
+                        titleData:try data(tx.flatMap { child($0,"strRef") == nil ? nil : $0 }),categories:try data(child(ser,"cat")),values:try data(child(ser,"val")),fill:try fill(props,part:path),stroke:stroke(props?.child("ln"),part:path),rawXML:ser.xml))
                 }
                 groups.append(.init(kind:group.name,grouping:val(group,"grouping"),orientation:val(group,"barDir"),series:series,axisIDs:group.children.filter { $0.namespace == ns && $0.name == "axId" }.compactMap { $0.attr("val") },rawXML:group.xml))
                 warn(path,group,.uninterpretedFormatting,"高度なchart書式・ラベルはXMLで保持します。表示は呼出側で判断してください",feature:"CHT-001")

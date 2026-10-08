@@ -8,7 +8,7 @@ enum PPTXXML {
     static func emu(_ value: Double) -> String { String(Int64((value * 12_700).rounded())) }
     static func hundredths(_ value: Double) -> String { String(Int64((value * 100).rounded())) }
     static func color(_ color: Color) throws -> String { switch color { case .rgb(let hex): "<a:srgbClr val=\"\(escapeXML(hex.uppercased()))\"/>"; case .theme(let key): "<a:schemeClr val=\"\(escapeXML(key))\"/>"; case .value: throw SlideError.unsafeEdit("色変換を持つ色の書換えは未対応です") } }
-    static func fill(_ fill: Fill?) throws -> String { guard let fill else { return "" }; switch fill { case .none: return "<a:noFill/>"; case .solid(let c): return "<a:solidFill>\(try color(c))</a:solidFill>" } }
+    static func fill(_ fill: Fill?) throws -> String { guard let fill else { return "" }; switch fill { case .none: return "<a:noFill/>"; case .solid(let c): return "<a:solidFill>\(try color(c))</a:solidFill>"; case .gradient, .pattern, .picture: throw SlideError.unsafeEdit("追加の塗りは読取専用です") } }
     static func line(_ stroke: Stroke?, tag: String = "ln") throws -> String {
         guard let stroke else { return "<a:\(tag)><a:noFill/></a:\(tag)>" }
         return "<a:\(tag) w=\"\(emu(stroke.width))\"><a:solidFill>\(try color(stroke.color))</a:solidFill><a:prstDash val=\"\(stroke.dash.rawValue)\"/><a:headEnd type=\"\(stroke.startArrow.rawValue)\"/><a:tailEnd type=\"\(stroke.endArrow.rawValue)\"/></a:\(tag)>"
@@ -87,6 +87,7 @@ enum PPTXXML {
         for i in table.rows.indices {
             var cells = ""
             for cell in table.rows[i] {
+                guard cell.borders == nil, cell.value == nil, cell.formula == nil else { throw SlideError.unsafeEdit("個別罫線・型付きセル値・式の新規保存は未対応です") }
                 var attrs = ""
                 if cell.rowSpan > 1 { attrs += " rowSpan=\"\(cell.rowSpan)\"" }; if cell.columnSpan > 1 { attrs += " gridSpan=\"\(cell.columnSpan)\"" }
                 if cell.isMergeContinuation { attrs += " hMerge=\"1\"" }

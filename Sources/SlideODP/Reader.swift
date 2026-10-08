@@ -337,7 +337,15 @@ private final class ODPPageParser {
                 for (key,isRow) in [("number-rows-spanned",true),("number-columns-spanned",false)] {
                     if let raw = cell.odf(ODF.table,key) { guard let n = Int(raw), n > 0, n <= options.limits.maxTableCells else { throw SlideError.corruptedPackage("ODP table span") }; if isRow { value.rowSpan = n } else { value.columnSpan = n } }
                 }
-                if cell.odf(ODF.table,"formula") != nil || cell.odf(ODF.office,"value-type") != nil { warn(cell,"式・型付き値は表示文字と別に原本に保持します") }
+                value.formula = cell.odf(ODF.table,"formula")
+                if let type = cell.odf(ODF.office,"value-type") {
+                    let attr = ["float":"value", "percentage":"value", "currency":"value", "boolean":"boolean-value", "date":"date-value", "time":"time-value", "string":"string-value"][type]
+                    value.value = .init(type:type,lexicalValue:attr.flatMap { cell.odf(ODF.office,$0) },currency:cell.odf(ODF.office,"currency"))
+                    if attr == nil { warn(cell,"未知のセル型を字句値として保持します") }
+                    else if !["string","void"].contains(type), value.value?.lexicalValue == nil { warn(cell,"型付きセルのキャッシュがありません") }
+                }
+                if value.formula != nil { warn(cell,"式とキャッシュを読みます。式は再計算しません") }
+                value.fill = try fill(styles.direct(name:cell.odf(ODF.table,"style-name"),family:"table-cell"))
                 cells += Array(repeating:value,count:repeatCount)
             }
             let n = try repeated(row,"number-rows-repeated")

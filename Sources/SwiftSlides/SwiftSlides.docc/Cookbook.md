@@ -292,3 +292,12 @@ let resolution = ColorResolver.resolve(color, theme: presentation.sourceThemes[0
 ```
 
 Element.customGeometry / effects / chart / diagramは読取投影です。書換え・新規生成と描画は限定契約の対象外です。単位付き間隔とfieldの基本保存は可能ですが、field更新時はrun.textとfield.cachedTextを一致させます。詳しい境界は[表示用API](display-values.md)を参照してください。
+
+
+## 読み取り値をJSONで確認する
+
+```sh
+swift run swiftslides read-json source.pptx > reading.json
+```
+
+スライド・要素の直接値、テーマ、診断を取得します。PPTX/PPTM/ODPの共通モデルの確認用で、原本パッケージ全体のJSON化ではありません。`Slide.transition` / `timing` / `comments`、`Element.media` / `nativeFeatures`、画像cropや追加の塗りも含みます。読み取り値を編集して保存できるとは限りません。

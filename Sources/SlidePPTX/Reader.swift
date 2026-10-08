@@ -48,6 +48,7 @@ struct PPTXReader {
     let extraParts: [String: Data]
     let extraTypes: [String: String]
     let warnings = WarningCollector()
+    let tableBudget = TableReadBudget()
     init(_ data: Data, options: ReadOptions, package: OPCPackage? = nil, extraParts: [String: Data] = [:], extraTypes: [String: String] = [:]) throws { self.extraParts = extraParts; self.extraTypes = extraTypes; self.data = data; self.options = options; self.package = try package ?? OPCPackage(data, limits: options.limits) }
     func tree(_ part: String) throws -> MarkupNode { try MarkupNode.parse(extraParts[part] ?? package.archive.read(part), part: part, limits: options.limits) }
     func warn(_ part: String, _ node: MarkupNode, _ code: SlideWarning.Code = .unsupportedContent, _ message: String = "未対応の要素を原本に保持します",
@@ -110,7 +111,7 @@ struct PPTXReader {
         guard node.isP, node.name == "sld", let c = node.child("cSld"), let sp = c.child("spTree") else { throw SlideError.corruptedPackage("スライド本体がありません: \(path)") }
         let rels = try relationships(from: path)
         var ids: Set<String> = []
-        var slide = Slide(id: id, name: c.attr("name") ?? "", elements: try elements(sp, rels: rels, part: path, slideID: id, ids: &ids), background: fill(c.child("bg")?.child("bgPr"), part: path))
+        var slide = Slide(id: id, name: c.attr("name") ?? "", elements: try elements(sp, rels: rels, part: path, slideID: id, ids: &ids), background: try fill(c.child("bg")?.child("bgPr"), part: path))
         slide.isHidden = ["0","false"].contains(node.attr("show") ?? "1")
         slide.layoutPath = rels.values.first { $0.type == "slideLayout" }?.path
         slide.showMasterShapes = boolean(node.attr("showMasterSp"))
@@ -129,10 +130,15 @@ struct PPTXReader {
                 slide.notes = .init(paragraphs: paragraphs)
             } else { warnings.add(.notesOmitted, part: notes, element: "notes", message: "ノート読み取りを省略しました。保存では元パーツを保持します", slideID: id) }
         }
-        for child in node.children where !["cSld","clrMapOvr"].contains(child.name) {
-            let feature: FeatureID? = child.isP && child.name == "timing" ? "ANI-005" : child.isP && child.name == "transition" ? "ANI-001" : nil
-            warn(path, child, feature: feature, slideID: id)
+        let commentResult = try comments(rels: rels, part: path, slideID: id)
+        slide.comments = commentResult.comments.isEmpty ? nil : commentResult.comments
+        var native = commentResult.native
+        for child in node.children where !(child.isP && ["cSld","clrMapOvr"].contains(child.name)) {
+            if child.isP, child.name == "transition" { slide.transition = try transition(child,part:path,slideID:id) }
+            else if child.isP, child.name == "timing" { slide.timing = try timing(child,part:path,slideID:id) }
+            else { warn(path,child,slideID:id); native.append(try nativeFeature(child,rels:rels,part:path)) }
         }
+        slide.nativeFeatures = native.isEmpty ? nil : native
         if let bgRef = c.child("bg")?.child("bgRef") { warn(path,bgRef,.uninterpretedFormatting,"テーマ背景参照を保持します。実効色は未解決です") }
         return slide
     }
@@ -174,7 +180,7 @@ struct PPTXReader {
             else { id = "opaque-\(result.count)-\(ids.count)"; guard ids.insert(id).inserted else { throw SlideError.corruptedPackage("opaque IDの重複") } }
             let props = node.child(kind == .group ? "grpSpPr" : "spPr")
             let xfrm = props?.child("xfrm") ?? node.child("xfrm")
-            var e = Element(id: id, name: cnv?.attr("name") ?? "", kind: kind, frame: rect(xfrm), geometry: props?.child("prstGeom").flatMap { $0.attr("prst") }.map { ShapeGeometry($0) }, fill: fill(props, part: part), stroke: stroke(props?.child("ln"), part: part))
+            var e = Element(id: id, name: cnv?.attr("name") ?? "", kind: kind, frame: rect(xfrm), geometry: props?.child("prstGeom").flatMap { $0.attr("prst") }.map { ShapeGeometry($0) }, fill: try fill(props, part: part), stroke: stroke(props?.child("ln"), part: part))
             e.customGeometry = try customGeometry(props?.child("custGeom"), part: part)
             e.effects = effects(props,style:node.child("style"),part:part)
             e.isTextBox = on(node.child("nvSpPr")?.child("cNvSpPr")?.attr("txBox"))
@@ -187,7 +193,7 @@ struct PPTXReader {
                 if let embed = blip.rel("embed"), let imageRel = rels[embed], imageRel.type == "image", let path = imageRel.path { e.image = .init(path: path, contentType: extraTypes[path] ?? package.type(of: path), alternativeText: cnv?.attr("descr") ?? "") }
                 else if let link = blip.rel("link"), let rel = rels[link], rel.isExternal { warn(part, blip, .unsupportedContent, "外部画像の参照を保持し、取得しません") }
                 else { throw SlideError.corruptedPackage("画像relationshipが不正です") }
-                if let crop = node.child("blipFill")?.child("srcRect") { warn(part,crop,.uninterpretedFormatting,"画像の切り抜きを原本で保持します") }
+                e.image?.crop = try imageCrop(drawingChild(node.child("blipFill"),"srcRect"), part: part)
             }
             if kind == .table, let tbl = node.child("graphic")?.child("graphicData")?.child("tbl") { e.table = try table(tbl, rels: rels, part: part) }
             if kind == .group { e.children = try elements(node, rels: rels, part: part, slideID: slideID, ids: &ids); e.childFrame = rect(xfrm, offset: "chOff", extent: "chExt") }
@@ -196,10 +202,15 @@ struct PPTXReader {
                 e.chart = try chart(graphic, rels: rels, part: part)
                 e.diagram = try diagram(graphic, rels: rels, part: part)
                 e.setRawXML(node.xml); warn(part,node,feature: "OBJ-011",slideID: slideID,elementID: id) }
-            for child in props?.children ?? [] where !["xfrm","prstGeom","custGeom","effectLst","effectDag","solidFill","noFill","ln"].contains(child.name) { warn(part,child,.uninterpretedFormatting) }
+            let extraProperties = props?.children.filter { !($0.isA && ["xfrm","prstGeom","custGeom","effectLst","effectDag","solidFill","noFill","gradFill","pattFill","blipFill","ln"].contains($0.name)) } ?? []
+            for child in extraProperties { warn(part,child,.uninterpretedFormatting) }
             if let av = props?.child("prstGeom")?.child("avLst"), !av.children.isEmpty { warn(part,av,.uninterpretedFormatting,"図形の調整値を原本で保持します") }
             if let style = node.child("style") { warn(part,style,.uninterpretedFormatting,"テーマ由来の図形書式参照を保持します。実効値は未解決です") }
             for child in node.children where ![nvName,"spPr","grpSpPr","txBody","style","blipFill","xfrm","graphic","sp","cxnSp","pic","graphicFrame","grpSp"].contains(child.name) { warn(part,child) }
+            e.media = try media(in: node.child(nvName)?.child("nvPr"), rels: rels, part: part)
+            let extra = node.children.filter { ![nvName,"spPr","grpSpPr","txBody","style","blipFill","xfrm","graphic","sp","cxnSp","pic","graphicFrame","grpSp"].contains($0.name) }
+                + extraProperties + (node.child(nvName)?.child("nvPr")?.children.filter { !($0.isP && $0.name == "ph") } ?? [])
+            if !extra.isEmpty { e.nativeFeatures = try extra.map { try nativeFeature($0, rels: rels, part: part) } }
             result.append(e)
         }
         return result
@@ -231,12 +242,6 @@ struct PPTXReader {
             if transforms.contains(where: { !["alpha","alphaMod","alphaOff"].contains($0.name) || !$0.namespace.contains("drawingml") }) { warn(part,c,.uninterpretedFormatting,"未対応の色変換を順番付きで保持します",feature:"PNT-002") }
             return .value(.init(base:base,transforms:transforms))
         }
-        return nil
-    }
-    func fill(_ node: MarkupNode?, part: String) -> Fill? {
-        guard let node else { return nil }
-        if node.child("noFill") != nil { return Fill.none }
-        if let c = color(node.child("solidFill"), part: part) { return .solid(c) }
         return nil
     }
     func stroke(_ node: MarkupNode?, part: String) -> Stroke? {
@@ -295,6 +300,8 @@ struct PPTXReader {
                 return .init(paragraphs:paragraphs,insets:insets,verticalAlignment:body?.attr("anchor").flatMap(VerticalAlignment.init),wrap:body?.attr("wrap").map { $0 != "none" },listStyle:node.child("lstStyle").flatMap { $0.children.isEmpty ? nil : listStyle($0,part:part) })
     }
     func table(_ node: MarkupNode, rels: [String:Relationship], part: String) throws -> Table {
+        let rowNodes = node.named("tr")
+        for row in rowNodes { try tableBudget.consume(row.named("tc").count, limit: options.limits.maxTableCells) }
         let widths = node.child("tblGrid")?.named("gridCol").compactMap { $0.attr("w").flatMap(Double.init).map { $0/12_700 } } ?? []
         var rows: [[TableCell]] = [], heights: [Double] = []
         for row in node.named("tr") {
@@ -302,13 +309,19 @@ struct PPTXReader {
             var cells: [TableCell] = []
             for cell in row.named("tc") {
                 let properties = cell.child("tcPr")
-                var result = TableCell(fill: fill(properties,part:part),border:stroke(properties?.child("lnL"),part:part),rowSpan:cell.attr("rowSpan").flatMap(Int.init) ?? 1,columnSpan:cell.attr("gridSpan").flatMap(Int.init) ?? 1,isMergeContinuation:on(cell.attr("hMerge")) || on(cell.attr("vMerge")))
+                var result = TableCell(fill: try fill(properties,part:part),border:stroke(properties?.child("lnL"),part:part),rowSpan:cell.attr("rowSpan").flatMap(Int.init) ?? 1,columnSpan:cell.attr("gridSpan").flatMap(Int.init) ?? 1,isMergeContinuation:on(cell.attr("hMerge")) || on(cell.attr("vMerge")))
                 if let tx = cell.child("txBody") { result.text = try text(tx,rels:rels,part:part) }
                 if let properties, ["marL","marR","marT","marB"].contains(where:{ properties.attr($0) != nil }) {
                     func margin(_ key: String, _ fallback: Double) -> Double { (properties.attr(key).flatMap(Double.init) ?? fallback) / 12_700 }
                     result.insets = Insets(top:margin("marT",45_720),left:margin("marL",91_440),bottom:margin("marB",45_720),right:margin("marR",91_440))
                 }
-                for c in properties?.children ?? [] where !["solidFill","noFill","lnL"].contains(c.name) { warn(part,c,.uninterpretedFormatting,"セルの個別辺・追加書式を原本で保持します") }
+                let edges: [(String, TableCellBorder.Edge)] = [("lnL",.left),("lnR",.right),("lnT",.top),("lnB",.bottom),("lnTlToBr",.topLeftToBottomRight),("lnBlToTr",.bottomLeftToTopRight)]
+                let borders = edges.compactMap { name, edge -> TableCellBorder? in
+                    guard let border = drawingChild(properties,name) else { return nil }
+                    return .init(edge: edge, stroke: stroke(border,part:part), isExplicitlyNone: drawingChild(border,"noFill") != nil, rawXML: border.xml)
+                }
+                result.borders = borders.isEmpty ? nil : borders
+                for c in properties?.children ?? [] where !(c.isA && ["solidFill","noFill","gradFill","pattFill","blipFill","lnL","lnR","lnT","lnB","lnTlToBr","lnBlToTr"].contains(c.name)) { warn(part,c,.uninterpretedFormatting,"セルの個別辺・追加書式を原本で保持します") }
                 cells.append(result)
             }
             rows.append(cells)

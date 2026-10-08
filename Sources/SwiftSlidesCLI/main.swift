@@ -1,8 +1,17 @@
 import Foundation
 import SwiftSlides
 
+private struct ReadSnapshot: Encodable {
+    let format: PresentationFormat?
+    let size: Size
+    let metadata: Metadata
+    let slides: [Slide]
+    let themes: [ThemePart]
+    let diagnostics: [SlideDiagnostic]
+}
+
 let arguments = CommandLine.arguments.dropFirst()
-guard let command = arguments.first else { print("swiftslides inspect|text|copy|sample <path> [output]"); exit(2) }
+guard let command = arguments.first else { print("swiftslides inspect|read-json|text|copy|sample <path> [output]"); exit(2) }
 let paths = Array(arguments.dropFirst())
 guard let first = paths.first else { exit(2) }
 do {
@@ -12,6 +21,11 @@ do {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted,.sortedKeys]
         print(String(decoding:try encoder.encode(result),as:UTF8.self))
     case "text": print(try Presentation(contentsOf:URL(filePath:first)).plainText)
+    case "read-json":
+        let p = try Presentation(contentsOf:URL(filePath:first))
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted,.sortedKeys]
+        let snapshot = ReadSnapshot(format:p.sourceFormat,size:p.size,metadata:p.metadata,slides:p.slides,themes:p.sourceThemes,diagnostics:p.readDiagnostics)
+        print(String(decoding:try encoder.encode(snapshot),as:UTF8.self))
     case "copy":
         guard paths.count == 2 else { exit(2) }
         let result = try Presentation(contentsOf:URL(filePath:first)).write(to:URL(filePath:paths[1]))

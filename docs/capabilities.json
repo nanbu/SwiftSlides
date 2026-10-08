@@ -360,6 +360,96 @@
       "fixtureSHA256": "10452311bd82b52f83c3106709849673a41e0a2adaeecb0c8676fcec4fc46523",
       "test": "projectionPreservesSourceAndRefusesUnsupportedEdits",
       "scope": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。 Strictは合成名前空間変種でありStrict producerの証拠ではない。"
+    },
+    {
+      "id": "E37",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "advanced-reading.pptx",
+      "fixtureSHA256": "68566f641a4c7b145c62d2931b475fa62cbde889bc0e0cd7bd39e2b51fe0707c",
+      "test": "advancedFillsCropAndCellBorders",
+      "scope": "架空のgradient・pattern・画像塗り・srcRect・個別罫線の直接値と未変更bytesを照合。Strict版は名前空間置換でproducer検証ではない。"
+    },
+    {
+      "id": "E38",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "advanced-reading.pptx",
+      "fixtureSHA256": "68566f641a4c7b145c62d2931b475fa62cbde889bc0e0cd7bd39e2b51fe0707c",
+      "test": "transitionsTimingMediaAndComments",
+      "scope": "架空のpush/進行時刻/timing/埋込音声参照/従来コメントと選択readerを照合。再生なし。"
+    },
+    {
+      "id": "E39",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "edit",
+      "fixture": "advanced-reading.pptx",
+      "fixtureSHA256": "68566f641a4c7b145c62d2931b475fa62cbde889bc0e0cd7bd39e2b51fe0707c",
+      "test": "advancedProjectionPreservesUnrelatedEditsAndRefusesMutations",
+      "scope": "位置編集で無関係な原本投影を保持し、追加塗り・crop・media・timing・遷移・コメント・拡張投影の変更保存を拒否。"
+    },
+    {
+      "id": "E40",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "advanced-reading-strict.pptx",
+      "fixtureSHA256": "93109eabdf600d5fffcf319977e06da6c431b75a90eeb9a2e40c8d0430d0bb45",
+      "test": "advancedFillsCropAndCellBorders",
+      "scope": "架空のgradient・pattern・画像塗り・srcRect・個別罫線の直接値と未変更bytesを照合。Strict版は名前空間置換でproducer検証ではない。"
+    },
+    {
+      "id": "E41",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "read",
+      "fixture": "advanced-reading-strict.pptx",
+      "fixtureSHA256": "93109eabdf600d5fffcf319977e06da6c431b75a90eeb9a2e40c8d0430d0bb45",
+      "test": "transitionsTimingMediaAndComments",
+      "scope": "架空のpush/進行時刻/timing/埋込音声参照/従来コメントと選択readerを照合。再生なし。"
+    },
+    {
+      "id": "E42",
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "operation": "edit",
+      "fixture": "advanced-reading-strict.pptx",
+      "fixtureSHA256": "93109eabdf600d5fffcf319977e06da6c431b75a90eeb9a2e40c8d0430d0bb45",
+      "test": "advancedProjectionPreservesUnrelatedEditsAndRefusesMutations",
+      "scope": "位置編集で無関係な原本投影を保持し、追加塗り・crop・media・timing・遷移・コメント・拡張投影の変更保存を拒否。"
+    },
+    {
+      "id": "E43",
+      "format": "odp",
+      "profile": "odf13",
+      "operation": "read",
+      "fixture": "styles.odp",
+      "fixtureSHA256": "04257a783591daad3e5ea1d700ad590727eaa22812663ee0c6edb780bf6301b0",
+      "test": "odpTypedCellsKeepLexicalValuesAndFormulaSeparateFromText",
+      "scope": "架空ODF 1.3にfloat/boolean/式を追加し、字句値と表示文字を分離。数値解釈不可をnilで示す。再計算なし。"
+    },
+    {
+      "id": "E44",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "libreoffice-advanced.pptx",
+      "fixtureSHA256": "df1deff17ca8992893e702c4a330207fb55e8edb7cc8ef39b88bd130952457a0",
+      "test": "libreOfficeAdvancedOutputReadsProducerValues",
+      "scope": "LibreOffice 26.2.3.2でadvanced-reading.pptxをPPTX再保存。gradient/pattern/画像塗り/timing/音声/従来コメントを再読し、未変更bytes一致。元入力との外観一致は未測定。"
+    },
+    {
+      "id": "E45",
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "operation": "read",
+      "fixture": "advanced-reading.pptx",
+      "fixtureSHA256": "68566f641a4c7b145c62d2931b475fa62cbde889bc0e0cd7bd39e2b51fe0707c",
+      "test": "modernCommentsAndExternalVideoRetainDescriptors",
+      "scope": "fixtureの音声参照を外部動画へ、新comments relationship URIと根要素へ置換。外部URLを取得せず参照を投影、新コメントXMLと診断を保持。"
     }
   ],
   "capabilities": [
@@ -1189,6 +1279,465 @@
         "E36"
       ],
       "notes": "自由曲線・効果・chart cache投影の変更と変換色の書換えを拒否。既存位置編集では原本を維持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E37",
+        "E44"
+      ],
+      "notes": "linear角度・path種類・stop順/色を保持。stop省略を継承補完せず、XML・診断を返す。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E37",
+        "E44"
+      ],
+      "notes": "pattern presetと前景/背景色。描画なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-006",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E37",
+        "E44"
+      ],
+      "notes": "内部/外部画像参照、crop、tileの有無、stretch詳細はXML。外部取得なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IMG-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E37"
+      ],
+      "notes": "srcRectの直接倍率と負値。形状mask・描画なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "TBL-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E37"
+      ],
+      "notes": "四辺と対角線の直接stroke/noFill・XML。table styleによる実効罫線は未計算。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "ANI-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E38",
+        "E44"
+      ],
+      "notes": "直接効果名・namespace、方向等はXML。固有効果の再生なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "ANI-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E38"
+      ],
+      "notes": "速度・クリック進行・進行時刻と拡張duration(ms)。未指定を補完しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "ANI-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E38",
+        "E44"
+      ],
+      "notes": "timingのnamespace付き木・属性・対象shape ID。トリガー/タイムライン評価なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "MED-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E38",
+        "E44",
+        "E45"
+      ],
+      "notes": "audio/video/Office mediaの内部/外部参照とcontent type。埋込音声と外部動画の架空検査。再生なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "REV-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E38",
+        "E44"
+      ],
+      "notes": "従来コメントの本文・作者・日時字句・位置(pt)とXML。返信・mentions等の新形式は未解釈。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-004",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-005",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "PNT-006",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "IMG-003",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "ANI-001",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "ANI-002",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "ANI-005",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "MED-001",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "REV-001",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E39"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E40"
+      ],
+      "notes": "linear角度・path種類・stop順/色を保持。stop省略を継承補完せず、XML・診断を返す。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E40"
+      ],
+      "notes": "pattern presetと前景/背景色。描画なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-006",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E40"
+      ],
+      "notes": "内部/外部画像参照、crop、tileの有無、stretch詳細はXML。外部取得なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "IMG-003",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E40"
+      ],
+      "notes": "srcRectの直接倍率と負値。形状mask・描画なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "TBL-004",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E40"
+      ],
+      "notes": "四辺と対角線の直接stroke/noFill・XML。table styleによる実効罫線は未計算。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "ANI-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E41"
+      ],
+      "notes": "直接効果名・namespace、方向等はXML。固有効果の再生なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "ANI-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E41"
+      ],
+      "notes": "速度・クリック進行・進行時刻と拡張duration(ms)。未指定を補完しない。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "ANI-005",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E41"
+      ],
+      "notes": "timingのnamespace付き木・属性・対象shape ID。トリガー/タイムライン評価なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "MED-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E41"
+      ],
+      "notes": "audio/video/Office mediaの内部/外部参照とcontent typeを投影。Strict証拠は埋込音声に限定し、動画producer・再生は未検証。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "REV-001",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E41"
+      ],
+      "notes": "従来コメントの本文・作者・日時字句・位置(pt)とXML。返信・mentions等の新形式は未解釈。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-004",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-005",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "PNT-006",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "IMG-003",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "ANI-001",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "ANI-002",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "ANI-005",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "MED-001",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlStrict",
+      "feature": "REV-001",
+      "operation": "edit",
+      "status": "unsupported",
+      "evidence": [
+        "E42"
+      ],
+      "notes": "追加投影は読取専用。変更・新規保存を拒否し、未変更部分は保持。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "TBL-002",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E43"
+      ],
+      "notes": "value-type/字句キャッシュ/通貨/原本formulaを表示文字と別に読む。書式・式の評価なし。"
+    },
+    {
+      "format": "odp",
+      "profile": "odf13",
+      "feature": "TBL-010",
+      "operation": "read",
+      "status": "partial",
+      "evidence": [
+        "E43"
+      ],
+      "notes": "value-type/字句キャッシュ/通貨/原本formulaを表示文字と別に読む。書式・式の評価なし。"
+    },
+    {
+      "format": "pptx",
+      "profile": "ooxmlTransitional",
+      "feature": "REV-002",
+      "operation": "read",
+      "status": "preserveOnly",
+      "evidence": [
+        "E45"
+      ],
+      "notes": "新形式コメントのpart/XML/参照を記述として返す。返信・解決・mentionsの意味モデルは未提供。"
     }
   ]
 }

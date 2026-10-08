@@ -43,6 +43,12 @@ flowchart TD
 
 [性能記録](performance.md)は先行PPTX測定と、E〜Hの10/100/1000枚の選択reader・ODP・Data sink測定を分離して記録する。Keynote・大量メディアの速度とメモリの根拠に転用しない。既存[検証記録](verification.md)はPowerPointの開封確認とLibreOfficeの再保存を記録するが、今回新たに全機能を実アプリ検証したわけではない。
 
+## 2026-10-08の読み取り拡張
+
+gradient/pattern/image fill、crop、個別セル罫線、遷移・timing木、メディア参照、従来コメント、ODP型付き値・式を追加。原本保持・読取専用の境界・PPTXセル展開予算も検査した。LibreOffice再保存出力とKeynoteの新規PPTX出力をXMLと独立照合し、PowerPointは開封だけ確認した。Keynoteへの既存fixture取り込みは拒否されており、互換性成功とは扱わない。操作別の結果は[検証記録](verification.md)に記す。
+
+全機能の意味解釈には到達していない。次の大きな読取範囲は、ネイティブKeynoteの型と参照graph、ODPの高度図形・メディア・時間構造、OOXMLの新コメントの意味モデル、実効継承・追加chart・数式・3Dの情報取得。再生と描画の完成は読取能力と別に判定する。
+
 ## 工程と完成条件
 
 ### P0 — 対応範囲と検証基盤

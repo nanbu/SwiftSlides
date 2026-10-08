@@ -1,6 +1,6 @@
 # 表示用の情報を読む
 
-SwiftSlidesは原本の値と参照を提供する。文字測定、実効継承、ピクセル描画、ぼかし、グラフの描画は呼出側で実行する。読み書きの共通契約は<doc:Reading>を参照。
+SwiftSlidesは原本の値と参照を提供する。文字測定、実効継承、ピクセル描画、ぼかし、グラフの描画は呼出側で実行する。API契約の正典は[実装仕様](implementation-spec.md#表示用の直接値の投影)。
 
 | 提案 | 判断 | 今回の範囲 |
 |---|---|---|
@@ -12,7 +12,7 @@ SwiftSlidesは原本の値と参照を提供する。文字測定、実効継承
 | F 影 | 採用 | 外側の影の直接値、effectRef、テーマeffect style。合成は呼出側 |
 | G チャート | 採用、cacheを優先 | 2D bar / line / pieを中心に系列、疎な点列、cache / literal / formula、軸、タイトル、凡例、元XML |
 | H SmartArt | 採用、保存済みdrawingを優先 | 関連パーツとデータ文字、保存済み図形・文字・接続線を共通Elementへ投影 |
-| I 高度な機能 | 段階追加を保留 | 追加の色計算、guide評価、円弧評価、内側の影等の合成、追加チャート。自動SmartArt配置・3D・アニメーションは独立した能力として設計が必要 |
+| I 高度な機能 | 一部の読取を追加 | 追加の色計算、guide評価、円弧評価、内側の影等の合成、追加チャート。自動SmartArt配置・3D・アニメーション再生は後続。遷移とtimingの構造は以下のAPIで取得 |
 
 C〜Hの新しい投影は読取専用。読取対応からcreate / edit / render対応を推測しない。既存の位置編集は原本の自由曲線・効果XMLを保全する。新しい投影の変更、新規生成、自由曲線のプリセットへの置換は拒否する。
 
@@ -39,3 +39,18 @@ C〜Hの新しい投影は読取専用。読取対応からcreate / edit / rende
 `Diagram.elements`は保存済みdrawingのローカル座標。`drawingFrame` / `drawingChildFrame`から親への配置を行う。drawingがない場合はdataTextsと診断だけを使い、自動配置を原本再現とみなさない。Office drawing拡張の根拠は[MS-ODRAWXML](https://learn.microsoft.com/en-us/openspecs/office_standards/ms-odrawxml/06cff208-c6e1-4db7-bb68-665135e5f0de)。
 
 合成fixtureは構文・値・保存境界を検証する。実PowerPoint・Keynote・LibreOfficeでのピクセル一致、フォント測定、全チャート・SmartArtの互換性はこの検証の対象外。
+
+
+## 塗り・画像・表・メディア・コメント
+
+`Fill.gradient`は順序付きstopと色変換、角度(度)、pathの種類を返します。`Fill.pattern`はpresetと前景/背景色、`Fill.picture`は所在part・画像参照・crop・tileを返します。`PictureFill.image`がnil、またはgradientのstopが空の場合は直接値の省略で、継承補完はしていません。path内の矩形やtile/stretchの詳細はrawXMLを参照します。`Image.crop`は100%=1で、負値も原本どおりです。既存のFillを網羅的にswitchする利用者は追加caseを処理してください。
+
+`TableCell.borders`は四辺と対角線を区別します。旧`border`は左辺の互換値です。既存表の同じ行列内の文字・寸法の編集では個別罫線・セル拡張XMLを保持します。文字領域の再構成には従来どおり診断が付き、strict保存では拒否します。`borders`自体の変更は読取専用のため拒否します。
+
+ODPでは`TableCell.value`のtype・lexicalValue・currencyと`formula`を表示文字と別に返します。number/booleanは解釈できるキャッシュだけの便宜値です。日付・時間・式の評価、表示書式の推測はしません。
+
+`Slide.transition`は効果名・名前空間・速度・クリック進行・時間(ms)・XML、`timing`は名前空間付きノード木・属性・対象ID・XMLを返します。nilと明示0/falseを区別します。再生・トリガーや固有効果の評価は提供しません。
+
+`Element.media`はaudio/video/Office拡張mediaの参照を返し、bytesは`asset(at:)`で取得します。外部参照は取得しません。`Slide.comments`は従来形式の本文・作者・日時字句・位置(pt)です。新形式コメントは意味を推測せず、`NativeFeatureDescriptor`のXMLと参照、診断で示します。
+
+これらの新しい投影は読取専用です。無関係な編集や未変更保存では原本を保持し、投影の変更や新規生成による情報の欠落を拒否します。`scripts/verify-advanced-reading.py`が公開CLIの値をPython標準XML parserで照合します。アプリの再保存で削られた値は復元しません。

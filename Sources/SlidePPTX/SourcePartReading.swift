@@ -27,7 +27,7 @@ extension PPTXReader {
         for child in root.children where !["cSld","clrMapOvr"].contains(child.name) { warn(path,child) }
         return .init(path:path,name:c.attr("name") ?? "",masterPath:rels.values.first { $0.type == "slideMaster" }?.path,
             themeOverridePath:rels.values.first { $0.type == "themeOverride" }?.path,
-            elements:try elements(sp,rels:rels,part:path,slideID:nil,ids:&ids),background:fill(c.child("bg")?.child("bgPr"),part:path),
+            elements:try elements(sp,rels:rels,part:path,slideID:nil,ids:&ids),background:try fill(c.child("bg")?.child("bgPr"),part:path),
             backgroundReference:styleReference(c.child("bg")?.child("bgRef"),part:path),colorMapOverride:root.child("clrMapOvr")?.child("overrideClrMapping")?.attributes,
             usesMasterColorMapping:root.child("clrMapOvr").map { $0.child("masterClrMapping") != nil },showMasterShapes:boolean(root.attr("showMasterSp")),layoutType:root.attr("type"))
     }
@@ -42,7 +42,7 @@ extension PPTXReader {
         }
         for child in root.children where !["cSld","clrMap","txStyles","sldLayoutIdLst"].contains(child.name) { warn(path,child) }
         return .init(path:path,name:c.attr("name") ?? "",themePath:rels.values.first { $0.type == "theme" }?.path,
-            elements:try elements(sp,rels:rels,part:path,slideID:nil,ids:&ids),background:fill(c.child("bg")?.child("bgPr"),part:path),
+            elements:try elements(sp,rels:rels,part:path,slideID:nil,ids:&ids),background:try fill(c.child("bg")?.child("bgPr"),part:path),
             backgroundReference:styleReference(c.child("bg")?.child("bgRef"),part:path),colorMap:root.child("clrMap")?.attributes,textStyles:textStyles,layoutPaths:layouts)
     }
 }

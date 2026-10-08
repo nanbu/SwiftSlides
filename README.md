@@ -100,8 +100,8 @@ FoundationのファイルI/O自体は同期です。URL保存は一時fileへの
 | ノート・メタデータ | 対応 | 対応 | notes / Metadata |
 | テーマ・script別フォント | sourceThemesで定義読取 | 新規Themeのみ | ThemePart / Theme / Font |
 | master/layoutの型付き読取 | 直接要素・表・参照鎖・文字既定 | 原本を保持・投影変更を拒否 | readLayout / readMaster、継承の自動適用なし |
-| Chart/SmartArt/OLE/動画 | chart cache・保存済みdiagram、他はopaque | 原本を保持・投影変更を拒否 | Element.chart / diagram、描画・再計算なし |
-| アニメーション・遷移・拡張XML | 原本/警告 | 未変更部分を保持 | タイミングのモデルなし |
+| Chart/SmartArt/OLE | chart cache・保存済みdiagram、OLEはopaque | 原本を保持・投影変更を拒否 | Element.chart / diagram、描画・再計算なし |
+| アニメーション・遷移・拡張XML | 効果・時刻・timing木・拡張XML | 原本を保持・投影変更を拒否 | Slide.transition / timing / nativeFeatures、再生なし |
 | PPTM・マクロ | 保持/警告 | 既存形式で保持 | 実行・新規VBA作成なし |
 | Strict/ZIP64/変則パーツ名 | 対応 | Strict編集・ZIP32保存 | Strict新規slide生成は拒否、原本複製可 |
 | 署名付きパッケージ | 未検証として警告 | 未変更保存のみ | 編集は拒否 |
@@ -125,6 +125,13 @@ FoundationのファイルI/O自体は同期です。URL保存は一時fileへの
 | フィールド保持と明示評価 | ID/type/cache/書式・初期番号 | 基本保存・run/cache一致が必要 | TextFieldEvaluator、Gregorian日時・番号 |
 | 順序付き色変換 | 基本値と変換、透明度系の解決 | 原本保持・新しい色の書換えを拒否 | ColorValue / ColorResolver、他の変換は診断 |
 | 自由曲線・外側の影 | Bezier/close・数値座標・影・effectRef | 原本保持・投影変更を拒否 | CustomGeometry / ElementEffects、式・合成は未提供 |
+| gradient/pattern/image fill | 直接値・参照・原本XML | 原本を保持・投影変更を拒否 | Fill追加case、継承・描画の自動適用なし |
+| 画像crop | 上下左右の倍率・負値 | 原本を保持・投影変更を拒否 | Image.crop / ImageCrop |
+| セルの個別辺・対角罫線 | 各辺と明示noFill | 同じ行列の局所編集で保持 | TableCell.bordersは読取専用、borderは左辺互換 |
+| 音声・動画参照 | 内部/外部参照・content type | 原本を保持・投影変更を拒否 | Element.media、取得・再生・デコードなし |
+| コメント | 従来形式の本文・作者・日時・位置 | 原本を保持・投影変更を拒否 | 新形式はNativeFeatureDescriptorと診断 |
+| ODPセルの型付き値・式 | 型・字句キャッシュ・通貨・原本式 | 未提供 | TableCell.value / formula、再計算なし |
+| PPTX表の展開予算 | 文書/選択slideのmaxTableCells | 対象外 | source master/layoutは読取呼出ごとの予算 |
 <!-- contract:end -->
 
 未対応要素には警告を付け、元パッケージを保持します。PPTX/PPTMの未変更保存は原本bytesそのまま。

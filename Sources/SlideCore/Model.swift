@@ -47,6 +47,9 @@ public enum Color: Sendable, Equatable, Codable {
 public enum Fill: Sendable, Equatable, Codable {
     case none
     case solid(Color)
+    case gradient(GradientFill)
+    case pattern(PatternFill)
+    case picture(PictureFill)
 }
 /// 線端の矢印形。
 public enum Arrowhead: String, Sendable, Codable { case none, triangle, stealth, diamond, oval, arrow }
@@ -163,6 +166,7 @@ public struct ShapeGeometry: Sendable, Equatable, Codable, ExpressibleByStringLi
 }
 /// 保存する画像。読んだ画像はpath参照、新規画像はdataを指定する。
 public struct Image: Sendable, Equatable, Codable {
+    public var crop: ImageCrop?
     public var path: String?
     public var data: Data?
     public var contentType: String?
@@ -172,6 +176,9 @@ public struct Image: Sendable, Equatable, Codable {
 }
 /// 表セル。rowSpan/columnSpanと継続セルのフラグを保持する。
 public struct TableCell: Sendable, Equatable, Codable {
+    public var borders: [TableCellBorder]?
+    public var value: TableCellValue?
+    public var formula: String?
     public var text: TextBody
     public var fill: Fill?
     public var border: Stroke?
@@ -200,6 +207,8 @@ public struct Placeholder: Sendable, Equatable, Codable {
 }
 /// 図形、線、画像、表、グループ、未解釈要素。idはスライド内で一意。
 public struct Element: Sendable, Equatable, Codable, Identifiable {
+    public var media: [MediaReference]?
+    public var nativeFeatures: [NativeFeatureDescriptor]?
     public enum Kind: String, Sendable, Codable { case shape, connector, image, table, group, opaque }
     public var id: String
     public var name: String
@@ -235,6 +244,10 @@ public struct Element: Sendable, Equatable, Codable, Identifiable {
 }
 /// 一枚のスライド。idはPresentation内で一意。既存スライドのidentityを維持する。
 public struct Slide: Sendable, Equatable, Codable, Identifiable {
+    public var transition: SlideTransition?
+    public var timing: SlideTiming?
+    public var comments: [SlideComment]?
+    public var nativeFeatures: [NativeFeatureDescriptor]?
     public var id: String
     public var name: String
     public var isHidden: Bool

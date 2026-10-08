@@ -50,6 +50,15 @@ ODPはSlideODPの読取専用codec。Keynoteは限定wire試作のみでcodecは
 
 ### 表示用の直接値の投影
 
+追加の読取契約（2026-10-08）:
+
+- `Fill.gradient` / `.pattern` / `.picture`はstop順・位置、線形角度、path、前景/背景色、内部/外部画像参照、crop・tile/stretchと原本XMLを保持する。stop listや画像参照の省略は継承で補わず、空stop/nil imageと診断で明示する。画像参照は所在partを基準に解決し、外部取得はしない。`Image.crop`は上下左右の倍率（100%=1、負値も保持）。追加の塗りとcropの生成・変更保存は拒否し、未変更値と無関係な編集は原本を保持する。
+- `TableCell.borders`は上下左右と対角線の直接罫線を区別し、明示noFillを保持する。`TableCell.value`はODPのvalue-typeと字句値・通貨、`formula`は名前空間接頭辞を含む原本式を保持する。数値や日時を表示文字から推測せず、再計算しない。追加属性は読取専用で、PPTX生成・変更保存で黙って落とさない。PPTX表にも`maxTableCells`を文書全体と選択スライド単位で適用する。
+- `Slide.transition`は効果名/名前空間、speed、クリック進行、進行時刻(ms)、拡張duration(ms)とXMLを保持する。`Slide.timing`は名前空間つきノード木・全属性・対象shape ID・XMLを読む。indefinite等の時間値を0に置換せず字句値として扱い、再生・トリガー評価は提供しない。
+- `Element.media`はaudio/videoとOffice拡張mediaの内部/外部参照・content typeを返す。`Slide.comments`は従来コメントの作者ID/名前/イニシャル、原本日時、位置(pt)、本文、原本XMLを返す。新形式コメントや未解釈拡張は`NativeFeatureDescriptor`に原本XML・所在part・名前空間・参照を残し、意味を解釈できたと表示しない。投影変更・新規保存は拒否する。
+
+根拠: [Microsoft Transition](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.presentation.transition)、[Microsoft Video](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.presentation.video)、[MS-PPTX新コメントpart](https://learn.microsoft.com/en-us/openspecs/office_standards/ms-pptx/b85a9293-bdca-4c6b-a554-8f3918db9791)、[OASIS ODF 1.3 Part 3](https://docs.oasis-open.org/office/OpenDocument/v1.3/OpenDocument-v1.3-part3-schema.html)。実アプリ検証結果は`verification.md`に操作別で記録する。KeynoteネイティブIWAの公開codec・全機能対応はこの追加契約に含まない。
+
 描画用の情報取得をライブラリの責務とし、OS固有の描画・文字計測・ぼかし、Excel数式評価、SmartArt自動配置は提供しない。以下は原本の直接値であり、実効外観・完全互換を保証しない。
 
 - `TextSpacing.points` / `.percentage`はポイントと倍率（100%=1）を区別する。`ParagraphStyle`の`lineSpacingValue` / `spaceBeforeValue` / `spaceAfterValue`が旧Double属性より優先する。旧属性は表現できる単位のときだけ読取で設定する。nilと0を区別し、`overlaying(_:)`で指定属性だけを単位ごと上書きする。`TextBody.listStyle`、`Presentation.defaultTextStyle`、masterのtitle/body/otherスタイルは直接値として保持し、継承の自動適用はしない。
@@ -80,7 +89,7 @@ PPTX/PPTM、Transitional/Strict、stored/deflated ZIPとZIP64の読み取り。
 スライド寸法、名前、表示フラグ、図形/コネクタ/グループ/画像/表、直接指定の文字と段落書式、内部・外部リンク、ノート、メタデータをモデル化。
 グループ内座標は親ローカル座標。グループのchildFrameも保持。継承レイアウトとテーマは原本パーツとして保持、外観計算はしない。
 画像は内部参照とサイズ・代替文。画像バイトはasset(at:)で必要時にCRC検証・展開。
-Chart/SmartArtはopaqueの原本に加え、上記の限定投影を提供する。OLE/動画/数式/アニメーション/遷移/拡張XMLは未解釈として原本に保持、警告。
+Chart/SmartArtはopaqueの原本に加え、上記の限定投影を提供する。動画・アニメーション・遷移・コメントは参照/構造/直接値を上記範囲で提供する。OLE・数式・未解釈拡張は原本に保持し、警告する。
 未知の図形はopaque要素、元XMLとパーツは保全。
 ノート省略指定時は警告、保存時は原本ノートを維持。
 OLEコンテナ(旧PPTまたは暗号化Office)、暗号ZIP、壊れたXML、欠落relationship、重複ID、制限超過はthrow。
@@ -159,7 +168,7 @@ PowerPoint実アプリとiOS実行は実際に検証するまで未検証と明�
 
 `SlideODP`製品と`Codec.odp`を提供し、umbrellaの`CodecSet.all`へ登録する。ODF 1.2/1.3/1.4のZIP presentationだけを対象とし、mimetype、manifest、content/stylesのnamespace/version・必須参照を検査する。暗号、未知version、Flat XMLは拒否する。ODPのcreate/edit/convert/render/playはunsupportedで、writeは常に拒否する。原本は読取結果内に保持しasset(at:)で取得できるが、未変更ODP保存もこの段階では提供しない。PPTXへ黙って変換しない。
 
-基本のrect/ellipse/line、text frame、group、内部画像、表、notes、metadataを投影する。transform/custom geometry/埋込object等はopaqueまたは保持診断にし、opaque custom-shapeの直接段落は表示文字だけ投影し、未知内容を空の成功に変えない。外部画像は取得せずopaqueとして保持する。automatic style自身のpropertyを直接指定としてモデルへ投影し、named parent/masterの継承値で埋めない。異なるスライド寸法は単一sizeで正確に表せないため拒否する。表の反復展開はPackageLimits.maxTableCells（既定1,000,000）で制限する。未対応の式・型・結合や列幅の未解決を診断し原本に保持する。
+基本のrect/ellipse/line、text frame、group、内部画像、表、notes、metadataを投影する。transform/custom geometry/埋込object等はopaqueまたは保持診断にし、opaque custom-shapeの直接段落は表示文字だけ投影し、未知内容を空の成功に変えない。外部画像は取得せずopaqueとして保持する。automatic style自身のpropertyを直接指定としてモデルへ投影し、named parent/masterの継承値で埋めない。異なるスライド寸法は単一sizeで正確に表せないため拒否する。表の反復展開はPackageLimits.maxTableCells（既定1,000,000）で制限する。式・型の未解釈部分、結合や列幅の未解決を診断し原本に保持する。
 
 `ODPCodec.styleIndex`の`ODPStyleIndex.resolve`はdefault、named parent chain、automatic、drawing-pageのmaster、直接propertyを解決しproperty単位の出典を返す。キーはnamespace URIとlocal nameを`|`で結んだ文字列。familyとcontent/stylesのautomatic scopeを分離し、parentはnamed styleだけから引く。none、未指定、未解決を区別し、循環は失敗、継承深さはmaxXMLDepthで制限し、未知style/masterはunresolvedで返す。文字計測やmaster上の図形・placeholderの外観計算はしない。
 

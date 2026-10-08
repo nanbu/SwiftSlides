@@ -77,18 +77,18 @@
     "test": "inheritedPartsTablesChartsAndSavedDiagram"
   },
   {
-    "feature": "Chart/SmartArt/OLE/動画",
-    "read": "chart cache・保存済みdiagram、他はopaque",
+    "feature": "Chart/SmartArt/OLE",
+    "read": "chart cache・保存済みdiagram、OLEはopaque",
     "write": "原本を保持・投影変更を拒否",
     "boundary": "Element.chart / diagram、描画・再計算なし",
     "test": "inheritedPartsTablesChartsAndSavedDiagram"
   },
   {
     "feature": "アニメーション・遷移・拡張XML",
-    "read": "原本/警告",
-    "write": "未変更部分を保持",
-    "boundary": "タイミングのモデルなし",
-    "test": "editTextPreservesOtherPartsAndNamespaces"
+    "read": "効果・時刻・timing木・拡張XML",
+    "write": "原本を保持・投影変更を拒否",
+    "boundary": "Slide.transition / timing / nativeFeatures、再生なし",
+    "test": "transitionsTimingMediaAndComments"
   },
   {
     "feature": "PPTM・マクロ",
@@ -250,5 +250,54 @@
     "write": "原本保持・投影変更を拒否",
     "boundary": "CustomGeometry / ElementEffects、式・合成は未提供",
     "test": "colorGeometryAndOuterShadowProjection"
+  },
+  {
+    "feature": "gradient/pattern/image fill",
+    "read": "直接値・参照・原本XML",
+    "write": "原本を保持・投影変更を拒否",
+    "boundary": "Fill追加case、継承・描画の自動適用なし",
+    "test": "advancedFillsCropAndCellBorders"
+  },
+  {
+    "feature": "画像crop",
+    "read": "上下左右の倍率・負値",
+    "write": "原本を保持・投影変更を拒否",
+    "boundary": "Image.crop / ImageCrop",
+    "test": "advancedFillsCropAndCellBorders"
+  },
+  {
+    "feature": "セルの個別辺・対角罫線",
+    "read": "各辺と明示noFill",
+    "write": "同じ行列の局所編集で保持",
+    "boundary": "TableCell.bordersは読取専用、borderは左辺互換",
+    "test": "tableTextPatchKeepsDistinctBordersAndAdditionalXML"
+  },
+  {
+    "feature": "音声・動画参照",
+    "read": "内部/外部参照・content type",
+    "write": "原本を保持・投影変更を拒否",
+    "boundary": "Element.media、取得・再生・デコードなし",
+    "test": "modernCommentsAndExternalVideoRetainDescriptors"
+  },
+  {
+    "feature": "コメント",
+    "read": "従来形式の本文・作者・日時・位置",
+    "write": "原本を保持・投影変更を拒否",
+    "boundary": "新形式はNativeFeatureDescriptorと診断",
+    "test": "transitionsTimingMediaAndComments"
+  },
+  {
+    "feature": "ODPセルの型付き値・式",
+    "read": "型・字句キャッシュ・通貨・原本式",
+    "write": "未提供",
+    "boundary": "TableCell.value / formula、再計算なし",
+    "test": "odpTypedCellsKeepLexicalValuesAndFormulaSeparateFromText"
+  },
+  {
+    "feature": "PPTX表の展開予算",
+    "read": "文書/選択slideのmaxTableCells",
+    "write": "対象外",
+    "boundary": "source master/layoutは読取呼出ごとの予算",
+    "test": "pptxTableBudgetAppliesAcrossSlidesAndSelectedReader"
   }
 ]

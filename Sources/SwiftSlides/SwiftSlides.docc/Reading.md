@@ -56,3 +56,6 @@ TextRun.fieldはID/type/cacheとfield内の段落書式を保持します。Text
 Color.value、Element.customGeometry / effects / chart / diagramは原本の追加投影です。未対応の色変換・guide・arc・高度な効果は保持と診断を優先します。chartの点列は疎なindex付きで、欠落値を0へ変えません。diagramは保存済みdrawingとデータ文字を返し、自動配置しません。chartとdiagramのkindはopaqueを維持します。
 
 新しい投影を変更した保存と新規生成は拒否します。自由曲線や影を持つ既存要素の位置編集では原本XMLを維持します。master/layout読取には同期・async入口があり、原本と取り込み済みパーツを読みます。element IDはpart pathと組にして識別します。描画順・showMasterSp・色map・themeOverrideの適用と文字測定は呼出側の責務です。
+
+
+追加の読取投影として、Fillのgradient/pattern/picture、Image.crop、TableCell.borders、Slide.transition / timing / comments、Element.media / nativeFeaturesを提供します。ODPの型付きセル値とformulaも表示文字と分離します。追加投影の変更・新規保存は拒否します。詳しくは<doc:display-values>を参照してください。

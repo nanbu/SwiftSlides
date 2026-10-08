@@ -34,6 +34,18 @@ let alpha = Color.value(.init(base: .sRGB("FFFFFF"), transforms: [.init(name: "a
 precondition(ColorResolver.resolve(alpha).color?.alpha == 0.5)
 var shape = Element(); shape.customGeometry = CustomGeometry(paths: [.init(commands: [.move(.init(x: "0", y: "0")), .close])])
 shape.effects = ElementEffects(direct: [.outerShadow(.init(distance: 2))])
+let gradient = GradientFill(stops: [GradientStop(position: 0, color: .rgb("FF0000"))])
+shape.fill = .gradient(gradient)
+shape.image = Image(path: "fictional.png"); shape.image?.crop = ImageCrop(left: 0.2)
+shape.media = [MediaReference(kind: .audio, reference: PartReference(relationshipID: "audio"))]
+shape.nativeFeatures = [NativeFeatureDescriptor(part: "fictional.xml", name: "extra", namespace: "urn:fictional", xml: "<extra/>")]
+var cell = TableCell("display"); cell.value = TableCellValue(type: "float", lexicalValue: "12.50")
+cell.borders = [TableCellBorder(edge: .right, isExplicitlyNone: true)]; cell.formula = "of:=1+1"
+precondition(cell.value?.number == 12.5)
+var described = Slide(); described.transition = SlideTransition(advanceAfterMilliseconds: 0)
+described.timing = SlideTiming(root: TimingNode(name: "timing", namespace: "urn:fictional"))
+described.comments = [SlideComment(text: "Fictional comment", part: "comment.xml")]
+precondition(described.transition?.advanceAfterMilliseconds == 0)
 '''
 
 PPTX = '''

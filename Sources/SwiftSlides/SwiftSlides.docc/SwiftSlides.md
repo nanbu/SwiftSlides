@@ -142,3 +142,20 @@ print(result.warnings)
 ### 表示用の情報
 
 - <doc:display-values>
+
+
+### 追加の読み取り値
+
+- ``GradientFill``
+- ``GradientStop``
+- ``PatternFill``
+- ``PictureFill``
+- ``ImageCrop``
+- ``TableCellBorder``
+- ``TableCellValue``
+- ``SlideTransition``
+- ``SlideTiming``
+- ``TimingNode``
+- ``MediaReference``
+- ``SlideComment``
+- ``NativeFeatureDescriptor``
