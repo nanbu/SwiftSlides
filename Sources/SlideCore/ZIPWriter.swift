@@ -1,5 +1,5 @@
 import Foundation
-import CZlib
+import CSlideZlib
 
 /// ZIP32 writer with deterministic ordering and timestamps. The reader also accepts ZIP64.
 package enum ZIPWriter {
@@ -54,7 +54,7 @@ package enum ZIPWriter {
                 guard offset < dst.count else { throw SlideError.corruptedPackage("deflate output overflow") }
                 stream.next_out = dst.baseAddress!.advanced(by: offset).assumingMemoryBound(to: UInt8.self)
                 stream.avail_out = uInt(min(64 << 10, dst.count - offset))
-                let status = CZlib.deflate(&stream, supplied == src.count ? Z_FINISH : Z_NO_FLUSH)
+                let status = CSlideZlib.deflate(&stream, supplied == src.count ? Z_FINISH : Z_NO_FLUSH)
                 if status == Z_STREAM_END { return status }
                 guard status == Z_OK, stream.total_in != previousInput || stream.total_out != offset else { throw SlideError.corruptedPackage("deflate failed") }
             }

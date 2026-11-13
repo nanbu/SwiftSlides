@@ -1,5 +1,5 @@
 import Foundation
-import CZlib
+import CSlideZlib
 
 /// Immutable, memory-backed OPC ZIP. No files are extracted to disk.
 package struct PackageArchive: Sendable {

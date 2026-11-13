@@ -1,5 +1,5 @@
 import Foundation
-import CZlib
+import CSlideZlib
 
 package enum Checksum {
     /// 大きなstored partのCRCでも協調キャンセルできる。

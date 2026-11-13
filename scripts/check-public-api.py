@@ -183,7 +183,7 @@ let package = Package(name: "APIClient", platforms: [.macOS(.v14)],
             print('PASS: independent ' + name, flush=True)
 
         modules = binary / 'Modules' if (binary / 'Modules').is_dir() else binary
-        command = ['swiftc', '-typecheck', '-I', str(modules), '-Xcc', '-fmodule-map-file=' + str(ROOT / 'Sources/CZlib/module.modulemap')]
+        command = ['swiftc', '-typecheck', '-I', str(modules), '-Xcc', '-fmodule-map-file=' + str(ROOT / 'Sources/CSlideZlib/module.modulemap')]
         probe = directory / 'Probe.swift'
         for name, code in NEGATIVE:
             probe.write_text('import Foundation\nimport SwiftSlides\n' + code + '\n')

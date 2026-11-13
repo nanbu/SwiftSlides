@@ -40,7 +40,7 @@ for module in SlideCore SlidePPTX SlideODP SwiftSlides; do
         -target "$(uname -m)-apple-macosx14.0" \
         -sdk "$sdk_path" \
         -I "$module_path" \
-        -Xcc "-fmodule-map-file=$PWD/Sources/CZlib/module.modulemap" \
+        -Xcc "-fmodule-map-file=$PWD/Sources/CSlideZlib/module.modulemap" \
         -experimental-allowed-reexported-modules=SlideCore,SlidePPTX,SlideODP \
         -minimum-access-level public \
         -omit-extension-block-symbols \

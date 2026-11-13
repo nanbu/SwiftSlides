@@ -11,8 +11,8 @@ let package = Package(
         .executable(name: "swiftslides", targets: ["SwiftSlidesCLI"])
     ],
     targets: [
-        .systemLibrary(name: "CZlib", pkgConfig: "zlib", providers: [.apt(["zlib1g-dev"]), .brew(["zlib"])]),
-        .target(name: "SlideCore", dependencies: ["CZlib"]),
+        .systemLibrary(name: "CSlideZlib", pkgConfig: "zlib", providers: [.apt(["zlib1g-dev"]), .brew(["zlib"])]),
+        .target(name: "SlideCore", dependencies: ["CSlideZlib"]),
         .target(name: "SlidePPTX", dependencies: ["SlideCore"]),
         .target(name: "SlideODP", dependencies: ["SlideCore"]),
         .target(name: "SwiftSlides", dependencies: ["SlideCore", "SlidePPTX", "SlideODP"]),
