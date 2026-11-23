@@ -1,6 +1,6 @@
 # 表示用の情報を読む
 
-SwiftSlidesは原本の値と参照を提供する。文字測定、実効継承、ピクセル描画、ぼかし、グラフの描画は呼出側で実行する。API契約の正典は[実装仕様](implementation-spec.md#表示用の直接値の投影)。
+SwiftSlidesは原本の値と参照を提供する。文字測定、実効継承、ピクセル描画、ぼかし、グラフの描画は呼出側で実行する。API契約の正典は[実装仕様](https://github.com/nanbu/SwiftSlides/blob/main/docs/implementation-spec.md#表示用の直接値の投影)。
 
 | 提案 | 判断 | 今回の範囲 |
 |---|---|---|
